@@ -423,14 +423,26 @@ main { display: block; }
 .work-item-trigger {
   display: block;
   width: 100%;
-  padding: 0;
-  padding-bottom: clamp(48px, 7vw, 88px);
+  padding: 0 var(--margin-outer) clamp(48px, 7vw, 88px);
   background: none;
   border: none;
   cursor: pointer;
   color: inherit;
   text-align: left;
 }
+
+/* Contained, editorial-sized image — not a full-bleed wall */
+.work-item-trigger .ph,
+.work-item-trigger .media-frame {
+  max-width: 640px;
+}
+
+/* Rhythm: left / right / center, repeating every three projects */
+.work-item:nth-of-type(3n+2) .work-item-trigger .ph,
+.work-item:nth-of-type(3n+2) .work-item-trigger .media-frame { margin-left: auto; }
+
+.work-item:nth-of-type(3n) .work-item-trigger .ph,
+.work-item:nth-of-type(3n) .work-item-trigger .media-frame { margin-left: auto; margin-right: auto; }
 
 .work-item-trigger .ph,
 .work-item-trigger .media-frame img {
@@ -442,7 +454,8 @@ main { display: block; }
   .work-item-trigger:hover .media-frame img { opacity: 0.92; transform: scale(1.01); }
 }
 
-.work-item-trigger:focus-visible .ph {
+.work-item-trigger:focus-visible .ph,
+.work-item-trigger:focus-visible .media-frame img {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
@@ -484,7 +497,8 @@ main { display: block; }
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(14px);
   overflow-y: auto;
 }
 
@@ -516,27 +530,23 @@ main { display: block; }
 }
 
 .detail-visual {
-  position: relative;
-  width: min(760px, 100%);
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+  width: min(880px, 100%);
 }
 
 .detail-primary { width: 100%; }
 
 .detail-secondary {
-  position: absolute;
-  top: -8%;
-  left: -8%;
-  width: 38%;
-  z-index: 2;
-  background: var(--paper);
+  width: 100%;
+  margin-top: var(--space-6);
 }
 
 @media (max-width: 700px) {
-  .detail-secondary {
-    position: static;
-    width: 60%;
-    margin: 0 auto var(--space-3);
-  }
+  .detail-visual { grid-template-columns: 1fr; gap: var(--space-3); }
+  .detail-secondary { width: 60%; margin: 0 auto; }
 }
 
 .detail-text {
