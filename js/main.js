@@ -139,9 +139,12 @@
       });
     });
 
+    var outsideClasses = ["detail-frame", "detail-carousel", "detail-slide"];
     document.querySelectorAll(".project-detail").forEach(function (detail) {
       detail.addEventListener("click", function (e) {
-        var clickedOutside = e.target === detail || e.target.classList.contains("detail-frame");
+        var clickedOutside =
+          e.target === detail ||
+          outsideClasses.some(function (cls) { return e.target.classList.contains(cls); });
         if (clickedOutside || e.target.hasAttribute("data-close")) {
           closeDetail();
         }
@@ -150,6 +153,42 @@
 
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && activeDetail) closeDetail();
+    });
+
+    /* Carousel: 1.png -> 2.png inside the same project. The arrow
+       scrolls to the next slide; it hides once there is no further
+       slide to reveal. Native horizontal scroll/drag/swipe already
+       works both ways without extra code. */
+    document.querySelectorAll("[data-carousel]").forEach(function (carousel) {
+      var slides = Array.prototype.slice.call(carousel.querySelectorAll(".detail-slide"));
+      var nextBtn = carousel.parentElement.querySelector("[data-next]");
+      if (!nextBtn || slides.length < 2) return;
+
+      var currentIndex = 0;
+
+      var updateArrow = function () {
+        nextBtn.classList.toggle("is-visible", currentIndex < slides.length - 1);
+      };
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              currentIndex = slides.indexOf(entry.target);
+              updateArrow();
+            }
+          });
+        },
+        { root: carousel, threshold: 0.6 }
+      );
+      slides.forEach(function (slide) { observer.observe(slide); });
+
+      nextBtn.addEventListener("click", function () {
+        var next = slides[currentIndex + 1];
+        if (next) next.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      });
+
+      updateArrow();
     });
   }
 })();
