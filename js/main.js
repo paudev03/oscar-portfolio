@@ -51,24 +51,10 @@
     });
   }
 
-  /* ---------- Scroll cue (Home) ---------- */
-  var scrollCue = document.querySelector(".scroll-cue");
-  if (scrollCue) {
-    window.addEventListener(
-      "scroll",
-      function () {
-        if (window.scrollY > 40) {
-          scrollCue.classList.add("is-hidden");
-        }
-      },
-      { passive: true }
-    );
-  }
-
   /* ---------- Cursor label: shows the project's own folio, not a
      generic "View project" tooltip — reads e.g. "03 —" ---------- */
   var canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  var workTargets = document.querySelectorAll(".work-card, .work-entry");
+  var workTargets = document.querySelectorAll(".work-item-trigger");
   if (canHover && workTargets.length) {
     var cursorLabel = document.createElement("div");
     cursorLabel.className = "cursor-label";
@@ -117,42 +103,53 @@
     });
   }
 
-  /* ---------- Figure tracker (Project Detail) ----------
-     A quiet running folio that echoes which figure is currently in
-     view — the index system carried through the scroll, not just
-     shown once at the top. */
-  var figures = document.querySelectorAll("[data-figure]");
-  if (figures.length > 1 && "IntersectionObserver" in window) {
-    var tracker = document.createElement("div");
-    tracker.className = "figure-tracker";
-    tracker.setAttribute("aria-hidden", "true");
-    tracker.innerHTML =
-      '<span class="current">01</span><span class="divider">/</span><span class="total">' +
-      String(figures.length).padStart(2, "0") +
-      "</span>";
-    document.body.appendChild(tracker);
+  /* ---------- Project detail overlay (Selected Work) ----------
+     Clicking a project's main image opens its detail in place, over
+     Selected Work — no new page, no new tab. Closes via the Close
+     button, a click outside the visual/text content, or Escape, and
+     always returns focus to the image that opened it. */
+  var openTriggers = document.querySelectorAll("[data-open]");
+  if (openTriggers.length) {
+    var activeDetail = null;
+    var activeTrigger = null;
 
-    var observer = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            var n = entry.target.getAttribute("data-figure");
-            tracker.querySelector(".current").textContent = String(n).padStart(2, "0");
-          }
-        });
-      },
-      { rootMargin: "-45% 0px -45% 0px" }
-    );
-    figures.forEach(function (fig) { observer.observe(fig); });
-
-    var toggleTracker = function () {
-      var body = document.querySelector(".project-body");
-      if (!body) return;
-      var rect = body.getBoundingClientRect();
-      var inRange = rect.top < window.innerHeight * 0.8 && rect.bottom > window.innerHeight * 0.2;
-      tracker.classList.toggle("is-visible", inRange);
+    var closeDetail = function () {
+      if (!activeDetail) return;
+      activeDetail.classList.remove("is-open");
+      document.body.style.overflow = "";
+      if (activeTrigger) activeTrigger.focus();
+      activeDetail = null;
+      activeTrigger = null;
     };
-    toggleTracker();
-    window.addEventListener("scroll", toggleTracker, { passive: true });
+
+    var openDetail = function (id, trigger) {
+      var detail = document.getElementById(id);
+      if (!detail) return;
+      activeDetail = detail;
+      activeTrigger = trigger;
+      detail.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+      var closeBtn = detail.querySelector("[data-close]");
+      if (closeBtn) closeBtn.focus();
+    };
+
+    openTriggers.forEach(function (trigger) {
+      trigger.addEventListener("click", function () {
+        openDetail(trigger.getAttribute("data-open"), trigger);
+      });
+    });
+
+    document.querySelectorAll(".project-detail").forEach(function (detail) {
+      detail.addEventListener("click", function (e) {
+        var clickedOutside = e.target === detail || e.target.classList.contains("detail-frame");
+        if (clickedOutside || e.target.hasAttribute("data-close")) {
+          closeDetail();
+        }
+      });
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && activeDetail) closeDetail();
+    });
   }
 })();

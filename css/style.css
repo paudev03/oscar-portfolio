@@ -372,151 +372,65 @@ main { display: block; }
   color: var(--graphite);
 }
 
-/* ---------- Selected Work — index + catalog sequence ---------- */
+.folio--tiny {
+  font-size: 13px;
+  opacity: 1;
+  color: var(--graphite);
+  display: block;
+}
 
-.work-index-head {
+/* ---------- Selected Work ----------
+   One project at a time: number, title, main image. Nothing else.
+   The page itself IS Selected Work — no landing page, no thumbnail
+   grid, no separate index to read first. */
+
+.work-list {
+  padding-top: calc(var(--space-6) + var(--space-3));
+}
+
+.work-item {
+  border-bottom: 1px solid var(--line);
+}
+.work-item:last-child { border-bottom: none; }
+
+.work-item-head {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: var(--space-5);
-}
-
-/* Table-of-contents list: a real index, read before the work itself */
-
-.work-toc {
-  border-top: 1px solid var(--line);
-}
-
-.work-toc-row {
-  display: grid;
-  grid-template-columns: 2.5em 1fr auto;
   align-items: baseline;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
-  transition: opacity var(--dur-fast) var(--ease);
+  padding-top: clamp(48px, 7vw, 88px);
+  margin-bottom: var(--space-4);
 }
 
-.work-toc-row .folio-mark {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  color: var(--graphite);
-  font-variant-numeric: tabular-nums;
+.work-item-head .name {
+  font-size: clamp(28px, 4vw, 48px);
 }
 
-.work-toc-row .name {
-  font-family: var(--font-serif);
-  font-size: clamp(17px, 2vw, 21px);
-}
-
-.work-toc-row .meta {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--graphite);
-  white-space: nowrap;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .work-toc:hover .work-toc-row { opacity: 0.45; }
-  .work-toc-row:hover { opacity: 1 !important; }
-}
-
-@media (max-width: 560px) {
-  .work-toc-row { grid-template-columns: 2em 1fr; }
-  .work-toc-row .meta { display: none; }
-}
-
-/* Catalog sequence: rhythm-varied entries, not a uniform grid */
-
-.work-sequence {
+.work-item-trigger {
   display: block;
-}
-
-.work-entry {
-  display: block;
+  width: 100%;
+  padding: 0;
+  padding-bottom: clamp(48px, 7vw, 88px);
+  background: none;
+  border: none;
+  cursor: pointer;
   color: inherit;
-  padding-top: clamp(72px, 10vw, 140px);
-  padding-bottom: clamp(72px, 10vw, 140px);
-  border-bottom: 1px solid var(--line);
+  text-align: left;
 }
 
-.work-entry:last-child { border-bottom: none; }
-
-.work-entry .ph {
+.work-item-trigger .ph {
   transition: opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .work-entry:hover .ph { opacity: 0.92; transform: scale(1.015); }
+  .work-item-trigger:hover .ph { opacity: 0.92; transform: scale(1.01); }
 }
 
-.work-entry:focus-visible .ph {
+.work-item-trigger:focus-visible .ph {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
 
-.work-entry-head {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-@media (max-width: 560px) {
-  .work-entry-head { flex-wrap: wrap; align-items: baseline; row-gap: var(--space-1); }
-}
-
-.work-entry-head .name {
-  font-size: clamp(24px, 3.4vw, 40px);
-}
-
-.work-entry-head .meta {
-  color: var(--graphite);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 0.4em;
-}
-
-/* Full bleed: image runs edge to edge, folio + title sit quietly below */
-.work-entry--full .ph { border-left: none; border-right: none; }
-.work-entry--full .work-entry-media { margin-left: calc(var(--margin-outer) * -1); margin-right: calc(var(--margin-outer) * -1); }
-.work-entry--full .work-entry-head { margin-top: var(--space-5); margin-bottom: 0; }
-
-/* Split: text + numeral on one side, image on the other — a spread, not a card */
-.work-entry--split .split-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-5);
-  align-items: center;
-}
-@media (min-width: 800px) {
-  .work-entry--split .split-grid { grid-template-columns: 0.85fr 1.15fr; gap: var(--space-6); }
-  .work-entry--split.is-reversed .split-grid { grid-template-columns: 1.15fr 0.85fr; }
-  .work-entry--split.is-reversed .split-text { order: 2; }
-}
-.split-text .folio--ghost { display: block; margin-bottom: var(--space-3); }
-
-/* Breathing: mostly text, small image — the "breathing page" */
-.work-entry--breathing {
-  text-align: center;
-}
-.work-entry--breathing .folio--ghost {
-  display: block;
-  margin: 0 auto var(--space-2);
-}
-.work-entry--breathing .work-entry-head {
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-}
-.work-entry--breathing .ph {
-  max-width: 560px;
-  margin: var(--space-5) auto 0;
-}
-
-/* Cursor label — the folio number itself, not a generic tooltip */
+/* Cursor label — the project's own folio, not a generic tooltip */
 .cursor-label {
   position: fixed;
   z-index: 50;
@@ -540,275 +454,96 @@ main { display: block; }
 .cursor-label.is-visible { opacity: 1; }
 
 @media (hover: hover) and (pointer: fine) {
-  body.has-cursor-label .work-entry,
-  body.has-cursor-label .work-card { cursor: none; }
+  body.has-cursor-label .work-item-trigger { cursor: none; }
 }
 
-/* Home teaser cards keep a simpler, smaller footprint */
-.work-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  column-gap: var(--gutter);
-  row-gap: var(--space-6);
+/* ---------- Project detail overlay ----------
+   Opens in place over Selected Work when a main image is clicked:
+   the same image, larger, with its related second image and a short
+   caption. Closes back to exactly where the user was. */
+
+.project-detail {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--paper);
+  overflow-y: auto;
 }
 
-@media (max-width: 1100px) {
-  .work-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .work-grid { grid-template-columns: 1fr; row-gap: var(--space-5); }
-}
+.project-detail.is-open { display: block; }
 
-.work-card {
-  display: block;
-  color: inherit;
-}
-
-.work-card figure {
-  margin: 0;
-  position: relative;
-}
-
-.work-card .ph {
-  transition: opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .work-card:hover .ph {
-    opacity: 0.92;
-    transform: scale(1.02);
-  }
-}
-
-.work-card:focus-visible .ph {
-  outline: 2px solid var(--ink);
-  outline-offset: 3px;
-}
-
-.work-card .meta {
-  margin-top: var(--space-2);
-  display: flex;
-  gap: var(--space-2);
-  align-items: baseline;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--graphite);
-}
-
-.work-card .meta .index {
-  font-variant-numeric: tabular-nums;
-}
-
-.work-card .meta .name {
-  color: var(--ink);
+.detail-close {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--margin-outer);
+  z-index: 210;
+  background: none;
+  border: none;
   font-family: var(--font-sans);
-  text-transform: none;
-  letter-spacing: 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+  padding: var(--space-2);
 }
+.detail-close:hover { opacity: 0.6; }
 
-/* ---------- Home ---------- */
-
-.hero {
-  min-height: 100svh;
+.detail-frame {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-top: var(--space-7);
-  padding-bottom: var(--space-5);
+  padding: calc(var(--space-6) + var(--space-3)) var(--margin-outer) var(--space-6);
 }
 
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-5);
-  align-items: end;
+.detail-visual {
+  position: relative;
+  width: min(760px, 100%);
 }
 
-@media (min-width: 900px) {
-  .hero-grid {
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: var(--space-6);
+.detail-primary { width: 100%; }
+
+.detail-secondary {
+  position: absolute;
+  top: -8%;
+  left: -8%;
+  width: 38%;
+  z-index: 2;
+  background: var(--paper);
+}
+
+@media (max-width: 700px) {
+  .detail-secondary {
+    position: static;
+    width: 60%;
+    margin: 0 auto var(--space-3);
   }
 }
 
-.hero-intro .h1 { margin-bottom: var(--space-3); }
+.detail-text {
+  max-width: var(--text-max);
+  margin-top: var(--space-5);
+}
 
-.hero-intro .folio--ghost {
+.detail-text .name { margin-bottom: var(--space-2); }
+
+.detail-text .meta {
+  color: var(--graphite);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: block;
   margin-bottom: var(--space-3);
 }
 
-.hero-availability {
-  margin-top: var(--space-4);
-  color: var(--graphite);
-  font-size: 14px;
-}
-
-.hero-featured .meta {
-  margin-top: var(--space-2);
-  font-size: 12px;
-  color: var(--graphite);
-  display: flex;
-  gap: var(--space-2);
-}
-
-.scroll-cue {
-  position: fixed;
-  left: var(--margin-outer);
-  bottom: var(--space-3);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--graphite);
-  transition: opacity var(--dur-med) var(--ease);
-}
-
-.scroll-cue .rule {
-  width: 1px;
-  height: 28px;
-  background: var(--line);
-}
-
-.scroll-cue.is-hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ---------- Project detail ---------- */
-
-.project-head {
-  padding-top: calc(var(--space-6) + var(--space-3));
-  padding-bottom: var(--space-5);
-}
-
-.project-eyebrow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: var(--space-4);
-}
-
-.project-title-row {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-4);
-}
-
-.project-title-row .folio--ghost {
-  order: -1;
-}
-
-.project-meta {
-  margin-top: var(--space-2);
-  color: var(--graphite);
-  font-size: 14px;
-}
-
-/* Running folio — tracks which figure is in view while scrolling the
-   project body. Desktop only; a quiet echo of the same index system. */
-.figure-tracker {
-  position: fixed;
-  right: var(--margin-outer);
-  bottom: var(--space-3);
-  z-index: 40;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-family: var(--font-serif);
-  font-size: 14px;
-  color: var(--graphite);
-  opacity: 0;
-  transition: opacity var(--dur-med) var(--ease);
-}
-.figure-tracker.is-visible { opacity: 1; }
-.figure-tracker .current { color: var(--ink); font-variant-numeric: tabular-nums; }
-.figure-tracker .divider { color: var(--line); }
-
-@media (max-width: 900px) {
-  .figure-tracker { display: none; }
-}
-
-.project-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.project-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--gutter);
-}
-
-.project-row--paired {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-@media (max-width: 800px) {
-  .project-row--paired { grid-template-columns: 1fr; }
-}
-
-figcaption {
-  margin-top: var(--space-2);
-  font-size: 12px;
-  color: var(--graphite);
-}
-
-.project-context {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-5);
-  padding: var(--space-6) 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-@media (min-width: 800px) {
-  .project-context { grid-template-columns: 1.4fr 1fr; }
-}
-
-.project-description {
+.detail-text p {
   font-family: var(--font-serif);
   font-style: italic;
-  font-size: clamp(18px, 2vw, 22px);
+  font-size: clamp(16px, 1.6vw, 19px);
   line-height: 1.6;
-  max-width: var(--text-max);
-}
-
-.project-credits dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: 0;
-  font-size: 12px;
-}
-
-.project-credits dt {
   color: var(--graphite);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.project-credits dd { margin: 0; }
-
-.next-project {
-  display: block;
-  padding-top: clamp(64px, 12vw, 160px);
-  padding-bottom: clamp(64px, 12vw, 160px);
-  text-align: center;
-}
-
-.next-project .label { margin-bottom: var(--space-3); }
-
-.next-project .ph { max-width: 720px; margin: 0 auto var(--space-4); }
-
-.next-project .h2 { transition: opacity var(--dur-fast) var(--ease); }
-.next-project:hover .h2 { opacity: 0.6; }
-
-.project-nav-back {
-  display: block;
-  padding-bottom: var(--space-3);
 }
 
 /* ---------- Contact ---------- */
