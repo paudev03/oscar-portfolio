@@ -434,7 +434,7 @@ main { display: block; }
 /* Contained, editorial-sized image — not a full-bleed wall */
 .work-item-trigger .ph,
 .work-item-trigger .media-frame {
-  max-width: 640px;
+  max-width: 460px;
 }
 
 /* Rhythm: left / right / center, repeating every three projects */
