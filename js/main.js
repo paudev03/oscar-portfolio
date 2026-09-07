@@ -20,14 +20,14 @@
     menuToggle.addEventListener("click", function () {
       var isOpen = mobileMenu.classList.toggle("is-open");
       menuToggle.setAttribute("aria-expanded", String(isOpen));
-      menuToggle.textContent = isOpen ? "Cerrar" : "Menú";
+      menuToggle.textContent = isOpen ? "Close" : "Menu";
       document.body.style.overflow = isOpen ? "hidden" : "";
     });
     mobileMenu.querySelectorAll("a").forEach(function (link) {
       link.addEventListener("click", function () {
         mobileMenu.classList.remove("is-open");
         menuToggle.setAttribute("aria-expanded", "false");
-        menuToggle.textContent = "Menú";
+        menuToggle.textContent = "Menu";
         document.body.style.overflow = "";
       });
     });
@@ -66,7 +66,7 @@
   }
 
   /* ---------- Cursor label: shows the project's own folio, not a
-     generic "Ver proyecto" tooltip — reads e.g. "03 —" ---------- */
+     generic "View project" tooltip — reads e.g. "03 —" ---------- */
   var canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   var workTargets = document.querySelectorAll(".work-card, .work-entry");
   if (canHover && workTargets.length) {
@@ -83,7 +83,7 @@
     workTargets.forEach(function (target) {
       var index = target.getAttribute("data-index") || "";
       target.addEventListener("mouseenter", function () {
-        cursorLabel.textContent = index ? index + " —" : "Ver proyecto";
+        cursorLabel.textContent = index ? index + " —" : "View project";
         document.body.classList.add("has-cursor-label");
         cursorLabel.classList.add("is-visible");
       });
@@ -101,8 +101,8 @@
     copyBtn.addEventListener("click", function () {
       var email = copyBtn.getAttribute("data-email") || "";
       var done = function () {
-        var original = "Copiar";
-        copyBtn.textContent = "Copiado";
+        var original = "Copy";
+        copyBtn.textContent = "Copied";
         copyBtn.classList.add("is-copied");
         setTimeout(function () {
           copyBtn.textContent = original;

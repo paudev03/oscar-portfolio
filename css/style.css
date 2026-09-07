@@ -1,6 +1,6 @@
 /* =========================================================
-   PLANO — sistema de diseño
-   Portfolio de Óscar — diseño gráfico y dirección de arte
+   PLANO — design system
+   Portfolio of Óscar — graphic design and art direction
    ========================================================= */
 
 :root {
@@ -346,7 +346,7 @@ main { display: block; }
 
 /* ---------- Folio system (signature) ----------
    A large, quiet serif numeral used as the site's recurring structural
-   motif — the "sistema de indexación editorial" named in the creative
+   motif — the "editorial indexing system" named in the creative
    brief as the one gesture of authorship. Appears in Home, Selected
    Work and Project Detail. It never sits on top of a placeholder —
    only ever beside or behind it, in the negative space. */
@@ -498,7 +498,7 @@ main { display: block; }
 }
 .split-text .folio--ghost { display: block; margin-bottom: var(--space-3); }
 
-/* Breathing: mostly text, small image — the "página de respiro" */
+/* Breathing: mostly text, small image — the "breathing page" */
 .work-entry--breathing {
   text-align: center;
 }
@@ -810,85 +810,6 @@ figcaption {
   display: block;
   padding-bottom: var(--space-3);
 }
-
-/* ---------- Archive ---------- */
-
-.archive-list { border-top: 1px solid var(--line); }
-
-.archive-row {
-  display: grid;
-  grid-template-columns: auto auto 1fr auto auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.archive-row .folio-mark {
-  font-family: var(--font-serif);
-  font-size: 14px;
-  color: var(--graphite);
-  font-variant-numeric: tabular-nums;
-}
-
-.archive-row .title {
-  font-family: var(--font-serif);
-  font-size: clamp(18px, 2.2vw, 24px);
-}
-
-.archive-row .category {
-  color: var(--graphite);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  justify-self: end;
-}
-
-.archive-row .year {
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  color: var(--graphite);
-  min-width: 3.5em;
-  text-align: right;
-}
-
-.archive-row .thumb {
-  width: 64px;
-  height: 48px;
-  flex-shrink: 0;
-}
-
-@media (max-width: 640px) {
-  .archive-row { grid-template-columns: auto auto 1fr auto; }
-  .archive-row .category { display: none; }
-}
-
-@media (max-width: 460px) {
-  .archive-row { grid-template-columns: auto 1fr auto; }
-  .archive-row .thumb { display: none; }
-}
-
-/* ---------- About ---------- */
-
-.about-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-6);
-}
-
-@media (min-width: 900px) {
-  .about-grid { grid-template-columns: 0.9fr 1.1fr; align-items: start; }
-}
-
-.about-list {
-  list-style: none;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  columns: 2;
-  gap: var(--space-4);
-  font-size: 14px;
-  color: var(--graphite);
-}
-.about-list li { break-inside: avoid; padding: var(--space-1) 0; }
 
 /* ---------- Contact ---------- */
 
