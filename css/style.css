@@ -9,6 +9,10 @@
   --graphite: #6B675E;
   --line: #DDD9CF;
 
+  --header-bg: #232220;
+  --header-text: #F5F4F1;
+  --header-text-dim: rgba(245, 244, 241, 0.62);
+
   --font-serif: "EB Garamond", "Iowan Old Style", Georgia, serif;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
@@ -188,19 +192,20 @@ main { display: block; }
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--margin-outer);
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  background: color-mix(in srgb, var(--header-bg) 94%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid transparent;
 }
 
 .site-header.is-scrolled {
-  border-bottom-color: var(--line);
+  border-bottom-color: rgba(245, 244, 241, 0.14);
 }
 
 .wordmark {
   font-family: var(--font-serif);
   font-size: 17px;
   letter-spacing: 0.02em;
+  color: var(--header-text);
 }
 
 .wordmark:hover { opacity: 0.7; }
@@ -214,14 +219,14 @@ main { display: block; }
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--graphite);
+  color: var(--header-text-dim);
   position: relative;
   padding-bottom: 2px;
 }
 
 .main-nav a:hover,
 .main-nav a[aria-current="page"] {
-  color: var(--ink);
+  color: var(--header-text);
 }
 
 .main-nav a[aria-current="page"]::after {
@@ -229,7 +234,7 @@ main { display: block; }
   position: absolute;
   left: 0; right: 0; bottom: -3px;
   height: 1px;
-  background: var(--ink);
+  background: var(--header-text);
 }
 
 .menu-toggle {
@@ -240,7 +245,7 @@ main { display: block; }
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--header-text);
   cursor: pointer;
   padding: var(--space-1);
 }
