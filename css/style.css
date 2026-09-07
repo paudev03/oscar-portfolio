@@ -497,8 +497,7 @@ main { display: block; }
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--paper);
   overflow-y: auto;
 }
 
@@ -545,8 +544,14 @@ main { display: block; }
   padding: 0 calc((100vw - var(--slide-w)) / 2);
   -ms-overflow-style: none;
   scrollbar-width: none;
+  cursor: grab;
 }
 .detail-carousel::-webkit-scrollbar { display: none; }
+.detail-carousel.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+}
 
 .detail-slide {
   flex: 0 0 var(--slide-w);
@@ -558,6 +563,7 @@ main { display: block; }
 
 .detail-slide .media-frame {
   display: inline-block;
+  width: auto;
   max-width: 100%;
 }
 .detail-slide .media-frame img {

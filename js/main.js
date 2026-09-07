@@ -189,6 +189,64 @@
       });
 
       updateArrow();
+
+      /* Desktop has no touch/trackpad gesture by default, and the
+         scrollbar is hidden, so give mouse users two ways in: a
+         plain vertical wheel scrolls the carousel horizontally, and
+         click-and-drag pans it directly. */
+      carousel.addEventListener(
+        "wheel",
+        function (e) {
+          if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+          carousel.scrollLeft += e.deltaY;
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+
+      carousel.querySelectorAll("img").forEach(function (img) {
+        img.setAttribute("draggable", "false");
+      });
+
+      var isDown = false;
+      var dragStartX = 0;
+      var scrollStart = 0;
+      var moved = false;
+
+      carousel.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "touch") return;
+        isDown = true;
+        moved = false;
+        dragStartX = e.clientX;
+        scrollStart = carousel.scrollLeft;
+        carousel.classList.add("is-dragging");
+        carousel.setPointerCapture(e.pointerId);
+      });
+
+      carousel.addEventListener("pointermove", function (e) {
+        if (!isDown) return;
+        var delta = e.clientX - dragStartX;
+        if (Math.abs(delta) > 3) moved = true;
+        carousel.scrollLeft = scrollStart - delta;
+      });
+
+      var endDrag = function (e) {
+        if (!isDown) return;
+        isDown = false;
+        carousel.classList.remove("is-dragging");
+        var nearest = slides.reduce(function (best, slide) {
+          var dist = Math.abs(slide.offsetLeft - carousel.scrollLeft - (carousel.clientWidth - slide.clientWidth) / 2);
+          return dist < best.dist ? { slide: slide, dist: dist } : best;
+        }, { slide: slides[0], dist: Infinity }).slide;
+        nearest.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      };
+
+      carousel.addEventListener("pointerup", endDrag);
+      carousel.addEventListener("pointercancel", endDrag);
+
+      carousel.addEventListener("click", function (e) {
+        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+      }, true);
     });
   }
 })();
