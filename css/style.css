@@ -344,6 +344,21 @@ main { display: block; }
   border-right: none;
 }
 
+/* Real image frame — same quiet hairline border as the placeholder
+   system, but for an actual photo. No forced crop: the image keeps
+   its own ratio, the frame just sizes to it. */
+.media-frame {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.media-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* ---------- Folio system (signature) ----------
    A large, quiet serif numeral used as the site's recurring structural
    motif — the "editorial indexing system" named in the creative
@@ -417,12 +432,14 @@ main { display: block; }
   text-align: left;
 }
 
-.work-item-trigger .ph {
+.work-item-trigger .ph,
+.work-item-trigger .media-frame img {
   transition: opacity var(--dur-med) var(--ease), transform var(--dur-med) var(--ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .work-item-trigger:hover .ph { opacity: 0.92; transform: scale(1.01); }
+  .work-item-trigger:hover .ph,
+  .work-item-trigger:hover .media-frame img { opacity: 0.92; transform: scale(1.01); }
 }
 
 .work-item-trigger:focus-visible .ph {
