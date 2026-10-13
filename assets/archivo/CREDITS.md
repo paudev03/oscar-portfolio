@@ -22,3 +22,7 @@ y se usan solo para demostrar el funcionamiento del archivo. Sustitúyelas por t
 | textura-asfalto.jpg | Christian Hebell | https://unsplash.com/photos/A6S-q3D67Ss |
 | textura-tablones.jpg | Steve Richey | https://unsplash.com/photos/6xqAK6oAeHA |
 | objeto-zapatos.jpg | Alejandro Escamilla | https://unsplash.com/photos/jVb0mSn0LbE |
+
+## Piezas generadas (sin fotografía de terceros)
+ropa-*, video-storyboard, video-rotulo, portada-*, objeto-tote: ilustraciones de demostración creadas para este proyecto (ficticias).
+video-fotograma: fotografía de Lorem Picsum (Unsplash License) con corrección de color.

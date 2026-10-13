@@ -41,11 +41,17 @@
 
   <div class="arch-controls" id="controls">
     <div class="arch-controls-inner container">
-      <div class="arch-years" id="years" role="group" aria-label="Explorar por año"></div>
+      <div class="arch-filter" id="filter">
+        <button class="arch-filter-btn" id="filter-btn" type="button" aria-expanded="false" aria-controls="filter-menu" aria-haspopup="true">
+          <span class="arch-filter-label" id="filter-label">Filtrar</span>
+          <span class="arch-filter-icon" aria-hidden="true"></span>
+        </button>
+        <div class="arch-filter-menu" id="filter-menu" role="group" aria-label="Filtrar por categoría"></div>
+      </div>
       <div class="arch-tools">
         <label class="arch-search">
           <span class="visually-hidden">Buscar en el archivo</span>
-          <input id="search" type="search" placeholder="Buscar título, etiqueta, año…" autocomplete="off" spellcheck="false">
+          <input id="search" type="search" placeholder="Buscar…" autocomplete="off" spellcheck="false">
         </label>
         <p class="arch-count" id="count" aria-live="polite"></p>
         <button class="arch-reset" id="reset" type="button" hidden>Mostrar todo</button>
@@ -59,7 +65,7 @@
 
   <div class="arch-empty container" id="empty" hidden>
     <p class="arch-empty-title">Nada coincide con <em id="empty-q"></em>.</p>
-    <p class="arch-empty-sub">Prueba con otra palabra, otro año, o vuelve a ver todo el archivo.</p>
+    <p class="arch-empty-sub">Prueba con otra palabra, otra categoría, o vuelve a ver todo el archivo.</p>
     <button class="arch-reset arch-reset--solid" id="empty-reset" type="button">Limpiar filtros</button>
   </div>
 </main>

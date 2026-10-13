@@ -1,7 +1,7 @@
 /* ==========================================================================
    ARCHIVO — lógica de presentación
    Lee window.ARCHIVO (js/archivo-data.js) y construye el tablero, el filtro
-   por años, el buscador y la vista ampliada. No contiene ninguna pieza.
+   por categorías, el buscador y la vista ampliada. No contiene ninguna pieza.
    ========================================================================== */
 (function () {
   "use strict";
@@ -50,21 +50,40 @@
     var g = p.groupId && groups[p.groupId];
     p._hay = norm([
       p.title, p.description, p.text, p.category, p.type, p.year,
-      (p.tags || []).join(" "), g ? g.title : ""
+      (p.categories || []).join(" "), (p.tags || []).join(" "), g ? g.title : ""
     ].join(" "));
     byId[p.id] = p;
     return p;
   });
 
-  var years = [];
-  pieces.forEach(function (p) { if (years.indexOf(p.year) === -1) years.push(p.year); });
-  years.sort(function (a, b) { return b - a; });
+  /* categorías: las que traen las piezas; DATA.categories solo fija el orden */
+  var catOrder = (DATA.categories || []).slice();
+  var catCount = {};
+  pieces.forEach(function (p) {
+    p._cats = (p.categories && p.categories.length ? p.categories : (p.category ? [p.category] : []))
+      .map(function (c) { return String(c); });
+    p._catKeys = p._cats.map(norm);
+    p._cats.forEach(function (c) {
+      var k = norm(c);
+      if (!(k in catCount)) {
+        catCount[k] = { name: c, n: 0 };
+        if (!catOrder.some(function (o) { return norm(o) === k; })) catOrder.push(c);
+      }
+      catCount[k].n++;
+    });
+  });
+  var categories = catOrder
+    .map(function (c) { var k = norm(c); return catCount[k] ? { key: k, name: catCount[k].name, n: catCount[k].n } : null; })
+    .filter(Boolean);
 
-  var state = { year: null, q: "" };
+  var state = { cat: null, q: "" };
 
   /* ---------- DOM ---------- */
 
-  var yearsEl = $("#years");
+  var filterEl = $("#filter");
+  var filterBtn = $("#filter-btn");
+  var filterLabel = $("#filter-label");
+  var filterMenu = $("#filter-menu");
   var searchEl = $("#search");
   var countEl = $("#count");
   var resetEl = $("#reset");
@@ -154,34 +173,55 @@
     board.appendChild(frag);
   }
 
-  function buildYears() {
-    var total = pieces.length;
-    var all = el("button", "arch-year");
-    all.type = "button";
-    all.dataset.year = "";
-    all.appendChild(document.createTextNode("Todo"));
-    all.appendChild(el("sup", null, String(total)));
-    yearsEl.appendChild(all);
-    years.forEach(function (y) {
-      var n = pieces.filter(function (p) { return p.year === y; }).length;
-      var b = el("button", "arch-year");
+  function buildFilter() {
+    function item(key, name, n, all) {
+      var b = el("button", "arch-cat" + (all ? " arch-cat--all" : ""));
       b.type = "button";
-      b.dataset.year = String(y);
-      b.appendChild(document.createTextNode(String(y)));
-      b.appendChild(el("sup", null, String(n)));
-      yearsEl.appendChild(b);
-    });
-    yearsEl.addEventListener("click", function (e) {
-      var b = e.target.closest(".arch-year");
+      b.dataset.cat = key;
+      b.appendChild(el("span", null, name));
+      b.appendChild(el("span", null, String(n)));
+      filterMenu.appendChild(b);
+    }
+    item("", "Todo", pieces.length, true);
+    categories.forEach(function (c) { item(c.key, c.name, c.n, false); });
+
+    filterBtn.addEventListener("click", function () { toggleMenu(); });
+    filterMenu.addEventListener("click", function (e) {
+      var b = e.target.closest(".arch-cat");
       if (!b) return;
-      setYear(b.dataset.year === "" ? null : Number(b.dataset.year));
+      setCat(b.dataset.cat === "" ? null : b.dataset.cat);
+      setTimeout(function () { toggleMenu(false); filterBtn.focus({ preventScroll: true }); }, 120);
     });
+    document.addEventListener("click", function (e) {
+      if (isOpen() && !filterEl.contains(e.target)) toggleMenu(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && isOpen() && modal.hidden) {
+        toggleMenu(false);
+        filterBtn.focus({ preventScroll: true });
+      }
+    });
+    document.addEventListener("focusin", function (e) {
+      if (isOpen() && !filterEl.contains(e.target)) toggleMenu(false);
+    });
+  }
+
+  function isOpen() { return filterMenu.classList.contains("is-open"); }
+
+  function toggleMenu(force) {
+    var open = typeof force === "boolean" ? force : !isOpen();
+    filterMenu.classList.toggle("is-open", open);
+    filterBtn.setAttribute("aria-expanded", String(open));
+  }
+
+  function catName(key) {
+    return catCount[key] ? catCount[key].name : "";
   }
 
   /* ---------- filtrado ---------- */
 
   function matches(p) {
-    if (state.year !== null && p.year !== state.year) return false;
+    if (state.cat !== null && p._catKeys.indexOf(state.cat) === -1) return false;
     if (!state.q) return true;
     var tokens = norm(state.q).split(/\s+/).filter(Boolean);
     for (var i = 0; i < tokens.length; i++) {
@@ -205,7 +245,7 @@
       c.meta.textContent = c.group.year + " · " + n + (n === 1 ? " pieza" : " piezas");
     });
 
-    var filtered = state.year !== null || state.q !== "";
+    var filtered = state.cat !== null || state.q !== "";
     countEl.textContent = (filtered ? visible + " de " + pieces.length : String(visible)) +
       (visible === 1 && !filtered ? " pieza" : " piezas");
     resetEl.hidden = !filtered;
@@ -215,23 +255,25 @@
     if (visible === 0) {
       var parts = [];
       if (state.q) parts.push("«" + state.q + "»");
-      if (state.year !== null) parts.push(String(state.year));
+      if (state.cat !== null) parts.push(catName(state.cat));
       emptyQ.textContent = parts.join(" en ");
     }
 
-    Array.prototype.forEach.call(yearsEl.children, function (b) {
-      var by = b.dataset.year === "" ? null : Number(b.dataset.year);
-      b.setAttribute("aria-pressed", by === state.year ? "true" : "false");
+    Array.prototype.forEach.call(filterMenu.children, function (b) {
+      var key = b.dataset.cat === "" ? null : b.dataset.cat;
+      b.setAttribute("aria-pressed", key === state.cat ? "true" : "false");
     });
+    filterEl.classList.toggle("is-active", state.cat !== null);
+    filterLabel.textContent = state.cat !== null ? "Filtrar · " + catName(state.cat) : "Filtrar";
 
-    var hash = state.year !== null ? "#" + state.year : "";
+    var hash = state.cat !== null ? "#" + encodeURIComponent(catName(state.cat).toLowerCase()) : "";
     if (location.hash !== hash) {
       try { history.replaceState(null, "", location.pathname + location.search + hash); } catch (e) { /* file:// */ }
     }
   }
 
-  function setYear(y) {
-    state.year = y;
+  function setCat(c) {
+    state.cat = c;
     apply();
   }
 
@@ -242,7 +284,7 @@
   }
 
   function clearAll() {
-    state.year = null;
+    state.cat = null;
     state.q = "";
     searchEl.value = "";
     apply();
@@ -417,7 +459,7 @@
     if (tag) {
       var t = tag.dataset.tag;
       closeModal();
-      state.year = null;
+      state.cat = null;
       setQuery(t);
       window.scrollTo(0, Math.max(0, board.getBoundingClientRect().top + window.scrollY - 220));
       return;
@@ -471,22 +513,22 @@
   }
   window.addEventListener("resize", setHeaderH);
 
-  /* ---------- hash (#2025) ---------- */
+  /* ---------- hash (#ropa) ---------- */
 
   function readHash() {
-    var y = Number(location.hash.replace("#", ""));
-    return years.indexOf(y) !== -1 ? y : null;
+    var k = norm(decodeURIComponent(location.hash.replace("#", "")));
+    return catCount[k] ? k : null;
   }
   window.addEventListener("hashchange", function () {
-    var y = readHash();
-    if (y !== state.year) { state.year = y; apply(); }
+    var k = readHash();
+    if (k !== state.cat) { state.cat = k; apply(); }
   });
 
   /* ---------- arranque ---------- */
 
   buildBoard();
-  buildYears();
-  state.year = readHash();
+  buildFilter();
+  state.cat = readHash();
   setHeaderH();
   apply();
   onScroll();
