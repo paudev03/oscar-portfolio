@@ -20,14 +20,16 @@
     menuToggle.addEventListener("click", function () {
       var isOpen = mobileMenu.classList.toggle("is-open");
       menuToggle.setAttribute("aria-expanded", String(isOpen));
-      menuToggle.textContent = isOpen ? "Close" : "Menu";
+      menuToggle.textContent = isOpen
+        ? (menuToggle.getAttribute("data-label-open") || "Close")
+        : (menuToggle.getAttribute("data-label-closed") || "Menu");
       document.body.style.overflow = isOpen ? "hidden" : "";
     });
     mobileMenu.querySelectorAll("a").forEach(function (link) {
       link.addEventListener("click", function () {
         mobileMenu.classList.remove("is-open");
         menuToggle.setAttribute("aria-expanded", "false");
-        menuToggle.textContent = "Menu";
+        menuToggle.textContent = menuToggle.getAttribute("data-label-closed") || "Menu";
         document.body.style.overflow = "";
       });
     });

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archivo — Óscar</title>
+<meta name="description" content="Archivo: trabajos, pruebas, imágenes y cosas que no quería perder. Una pizarra personal de diseño gráfico.">
+<meta property="og:title" content="Archivo — Óscar">
+<meta property="og:description" content="Trabajos, pruebas, imágenes y cosas que no quería perder.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/archivo.css">
+</head>
+<body class="page-archivo">
+<a class="skip-link" href="#board">Saltar al archivo</a>
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">OTI</a>
+  <nav class="main-nav" aria-label="Navegación principal">
+    <a href="index.html">Selected Work</a>
+    <a href="archivo.html" aria-current="page">Archivo</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+  <button class="menu-toggle" aria-expanded="false" aria-controls="mobile-menu" data-label-open="Cerrar" data-label-closed="Menú">Menú</button>
+</header>
+
+<nav id="mobile-menu" class="mobile-menu" aria-label="Navegación móvil">
+  <a href="index.html">Selected Work</a>
+  <a href="archivo.html">Archivo</a>
+  <a href="contact.html">Contact</a>
+</nav>
+
+<main id="main" class="arch">
+  <header class="arch-head container">
+    <h1 class="arch-title">Archivo</h1>
+    <p class="arch-intro">Trabajos, pruebas, imágenes y cosas que no quería perder.</p>
+  </header>
+
+  <div class="arch-controls" id="controls">
+    <div class="arch-controls-inner container">
+      <div class="arch-years" id="years" role="group" aria-label="Explorar por año"></div>
+      <div class="arch-tools">
+        <label class="arch-search">
+          <span class="visually-hidden">Buscar en el archivo</span>
+          <input id="search" type="search" placeholder="Buscar título, etiqueta, año…" autocomplete="off" spellcheck="false">
+        </label>
+        <p class="arch-count" id="count" aria-live="polite"></p>
+        <button class="arch-reset" id="reset" type="button" hidden>Mostrar todo</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="arch-board container" id="board" aria-label="Tablero del archivo" tabindex="-1">
+    <noscript><p class="arch-noscript">El archivo necesita JavaScript para mostrarse.</p></noscript>
+  </section>
+
+  <div class="arch-empty container" id="empty" hidden>
+    <p class="arch-empty-title">Nada coincide con <em id="empty-q"></em>.</p>
+    <p class="arch-empty-sub">Prueba con otra palabra, otro año, o vuelve a ver todo el archivo.</p>
+    <button class="arch-reset arch-reset--solid" id="empty-reset" type="button">Limpiar filtros</button>
+  </div>
+</main>
+
+<button class="arch-top" id="to-top" type="button" aria-label="Volver al inicio del archivo" hidden>↑ Inicio</button>
+
+<footer class="site-footer">
+  <div class="footer-row">
+    <span class="label">© 2026 Óscar</span>
+    <span class="label">Graphic design &amp; art direction</span>
+  </div>
+</footer>
+
+<!-- Vista ampliada de una pieza -->
+<div class="arch-modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+  <div class="arch-modal-backdrop" data-close></div>
+  <div class="arch-modal-panel">
+    <button class="arch-modal-close" type="button" data-close aria-label="Cerrar vista ampliada">Cerrar ✕</button>
+    <div class="arch-modal-media" id="modal-media">
+      <button class="arch-modal-nav arch-modal-nav--prev" id="modal-prev" type="button" aria-label="Pieza anterior de la serie">←</button>
+      <figure class="arch-modal-fig" id="modal-fig"></figure>
+      <button class="arch-modal-nav arch-modal-nav--next" id="modal-next" type="button" aria-label="Pieza siguiente de la serie">→</button>
+    </div>
+    <div class="arch-modal-info">
+      <p class="arch-modal-kicker" id="modal-kicker"></p>
+      <h2 class="arch-modal-title" id="modal-title"></h2>
+      <p class="arch-modal-desc" id="modal-desc"></p>
+      <ul class="arch-modal-tags" id="modal-tags"></ul>
+      <div class="arch-modal-series" id="modal-series" hidden>
+        <p class="label" id="modal-series-label"></p>
+        <div class="arch-modal-thumbs" id="modal-thumbs"></div>
+      </div>
+      <div class="arch-modal-related" id="modal-related" hidden>
+        <p class="label">Relacionado</p>
+        <div class="arch-modal-thumbs" id="modal-related-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script src="js/archivo-data.js"></script>
+<script src="js/archivo.js"></script>
+</body>
+</html>
