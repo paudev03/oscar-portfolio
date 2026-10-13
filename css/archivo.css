@@ -15,7 +15,7 @@ body.page-archivo {
 
 .arch {
   position: fixed;
-  top: var(--header-h, 74px);
+  top: var(--header-h, 58px);
   left: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
