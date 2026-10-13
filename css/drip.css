@@ -27,7 +27,6 @@
   fill: var(--ink);
 }
 .drip-paint path { fill: var(--ink); }
-.drip-paint .drip-gloss { fill: none; stroke: var(--paper); stroke-linecap: round; opacity: 0.16; }
 
 /* the first project follows the experiment directly */
 .drip + .work-list { padding-top: 0; }

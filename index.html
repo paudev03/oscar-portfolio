@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=20261017">
-<link rel="stylesheet" href="css/drip.css?v=20261020">
+<link rel="stylesheet" href="css/drip.css?v=20261021">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -40,7 +40,15 @@
   <section class="drip" id="drip" aria-label="@oti">
     <div class="drip-stage">
       <svg role="img" aria-label="@oti" preserveAspectRatio="xMidYMid meet" viewBox="0 0 1600 900">
-        <g class="drip-paint"></g>
+        <defs>
+          <!-- "goo": blur + alpha threshold fuses the paint shapes into one organic mass.
+               Applied to the paint layer only; the logo text is never filtered. -->
+          <filter id="drip-goo" filterUnits="userSpaceOnUse" x="0" y="0" width="1600" height="900" color-interpolation-filters="sRGB">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+            <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11"/>
+          </filter>
+        </defs>
+        <g class="drip-paint" filter="url(#drip-goo)"></g>
         <text class="drip-logo" x="0" y="0">@oti</text>
       </svg>
     </div>
@@ -366,7 +374,7 @@
   </div>
 </div>
 
-<script src="js/drip.js?v=20261020"></script>
+<script src="js/drip.js?v=20261021"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
