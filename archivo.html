@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="css/archivo.css">
 </head>
 <body class="page-archivo">
-<a class="skip-link" href="#board">Saltar al archivo</a>
+<a class="skip-link" href="#stage">Saltar al archivo</a>
 
 <header class="site-header">
   <a class="wordmark" href="index.html">OTI</a>
@@ -34,13 +34,13 @@
 </nav>
 
 <main id="main" class="arch">
-  <header class="arch-head container">
-    <h1 class="arch-title">Archivo</h1>
-    <p class="arch-intro">Trabajos, pruebas, imágenes y cosas que no quería perder.</p>
-  </header>
+  <header class="arch-head">
+    <div class="arch-head-text">
+      <h1 class="arch-title">Archivo</h1>
+      <p class="arch-intro">Trabajos, pruebas, imágenes y cosas que no quería perder.</p>
+    </div>
 
-  <div class="arch-controls" id="controls">
-    <div class="arch-controls-inner container">
+    <div class="arch-controls" id="controls">
       <div class="arch-filter" id="filter">
         <button class="arch-filter-btn" id="filter-btn" type="button" aria-expanded="false" aria-controls="filter-menu" aria-haspopup="true">
           <span class="arch-filter-label" id="filter-label">Filtrar</span>
@@ -57,27 +57,37 @@
         <button class="arch-reset" id="reset" type="button" hidden>Mostrar todo</button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <section class="arch-board container" id="board" aria-label="Tablero del archivo" tabindex="-1">
-    <noscript><p class="arch-noscript">El archivo necesita JavaScript para mostrarse.</p></noscript>
+  <!-- Lienzo: la cámara (posición + zoom) vive en js/archivo.js -->
+  <section class="arch-stage" id="stage" tabindex="0"
+           aria-label="Lienzo del archivo. Arrastra para moverte, rueda o botones para el zoom, flechas del teclado para desplazarte.">
+    <div class="arch-world" id="board">
+      <noscript><p class="arch-noscript">El archivo necesita JavaScript para mostrarse.</p></noscript>
+    </div>
+
+    <div class="arch-empty arch-ui" id="empty" hidden>
+      <p class="arch-empty-title">Nada coincide con <em id="empty-q"></em>.</p>
+      <p class="arch-empty-sub">Prueba con otra palabra, otra categoría, o vuelve a ver todo el archivo.</p>
+      <button class="arch-reset arch-reset--solid" id="empty-reset" type="button">Limpiar filtros</button>
+    </div>
+
+    <div class="arch-nav arch-ui" role="group" aria-label="Controles del lienzo">
+      <button type="button" id="zoom-out" class="arch-nav-btn" aria-label="Alejar">−</button>
+      <output id="zoom-val" class="arch-nav-val">100 %</output>
+      <button type="button" id="zoom-in" class="arch-nav-btn" aria-label="Ampliar">+</button>
+      <button type="button" id="fit" class="arch-nav-btn arch-nav-btn--text">Ver todo</button>
+      <button type="button" id="mm-toggle" class="arch-nav-btn arch-nav-btn--text" aria-controls="minimap" aria-pressed="true">Mapa</button>
+    </div>
+
+    <aside class="arch-minimap arch-ui" id="minimap" aria-label="Minimapa del archivo">
+      <div class="arch-minimap-map" id="mm-map">
+        <div class="arch-mm-view" id="mm-view" aria-hidden="true"></div>
+      </div>
+      <button type="button" class="arch-minimap-fold" id="mm-fold" aria-label="Plegar minimapa">−</button>
+    </aside>
   </section>
-
-  <div class="arch-empty container" id="empty" hidden>
-    <p class="arch-empty-title">Nada coincide con <em id="empty-q"></em>.</p>
-    <p class="arch-empty-sub">Prueba con otra palabra, otra categoría, o vuelve a ver todo el archivo.</p>
-    <button class="arch-reset arch-reset--solid" id="empty-reset" type="button">Limpiar filtros</button>
-  </div>
 </main>
-
-<button class="arch-top" id="to-top" type="button" aria-label="Volver al inicio del archivo" hidden>↑ Inicio</button>
-
-<footer class="site-footer">
-  <div class="footer-row">
-    <span class="label">© 2026 Óscar</span>
-    <span class="label">Graphic design &amp; art direction</span>
-  </div>
-</footer>
 
 <!-- Vista ampliada de una pieza -->
 <div class="arch-modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
@@ -108,6 +118,7 @@
 
 <script src="js/main.js"></script>
 <script src="js/archivo-data.js"></script>
+<script src="js/archivo-layout.js"></script>
 <script src="js/archivo.js"></script>
 </body>
 </html>

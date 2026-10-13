@@ -1,7 +1,12 @@
 /* ==========================================================================
-   ARCHIVO — lógica de presentación
-   Lee window.ARCHIVO (js/archivo-data.js) y construye el tablero, el filtro
-   por categorías, el buscador y la vista ampliada. No contiene ninguna pieza.
+   ARCHIVO — lienzo
+   Lee window.ARCHIVO (contenido, js/archivo-data.js) y window.ARCHIVO_LAYOUT
+   (coordenadas, js/archivo-layout.js) y construye un lienzo navegable.
+
+   Una única cámara {x, y, z} es la fuente de verdad:
+     - el mundo se transforma con translate(x, y) scale(z)
+     - el minimapa y el porcentaje de zoom se derivan de ella
+   Filtro por categorías, buscador y vista ampliada comparten el mismo estado.
    ========================================================================== */
 (function () {
   "use strict";
@@ -35,8 +40,21 @@
   }
 
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-
   function src(file) { return BASE + file; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  /* requestAnimationFrame con red de seguridad: si el navegador pausa los
+     fotogramas (pestaña sin foco, vista incrustada) el lienzo sigue respondiendo */
+  function raf(fn) {
+    var done = false;
+    function run(t) {
+      if (done) return;
+      done = true;
+      fn(typeof t === "number" ? t : performance.now());
+    }
+    window.requestAnimationFrame(run);
+    setTimeout(run, 50);
+  }
 
   /* ---------- datos ---------- */
 
@@ -80,6 +98,8 @@
 
   /* ---------- DOM ---------- */
 
+  var LAYOUT = window.ARCHIVO_LAYOUT || { world: { w: 4000, h: 3000 }, pieces: {}, zones: [] };
+  var stage = $("#stage");
   var filterEl = $("#filter");
   var filterBtn = $("#filter-btn");
   var filterLabel = $("#filter-label");
@@ -90,20 +110,32 @@
   var emptyEl = $("#empty");
   var emptyQ = $("#empty-q");
   var emptyReset = $("#empty-reset");
-  var toTop = $("#to-top");
+  var zoomVal = $("#zoom-val");
+  var minimap = $("#minimap");
+  var mmMap = $("#mm-map");
+  var mmView = $("#mm-view");
 
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var els = {};
-  var clusters = [];
+  var groupLabels = [];
+  var zoneLabels = [];
+  var mmDots = {};
 
-  function buildPiece(p, inCluster, order) {
-    var b = el("button", "piece piece--" + p._type + " sz-" + (p.size || "m") + " al-" + (p.align || "l"));
+  var world = board;                       // #board = el mundo (se transforma con la cámara)
+  var W = LAYOUT.world.w, H = LAYOUT.world.h;
+
+  /* ==================================================================
+     1. CONSTRUCCIÓN DEL LIENZO (contenido + coordenadas)
+     ================================================================== */
+
+  function buildPiece(p, order) {
+    var b = el("button", "piece piece--" + p._type);
     b.type = "button";
     b.setAttribute("aria-haspopup", "dialog");
     b.setAttribute("aria-label", p.title + ", " + p.year + ". " + p.category);
     b.dataset.id = p.id;
     b.style.setProperty("--rot", (p.rot || 0) + "deg");
     b.style.setProperty("--i", order);
-    if (inCluster && p.valign) b.classList.add("va-" + p.valign);
     if (TAPE_TYPES[p._type] && p._i % 3 === 1) b.classList.add("has-tape");
 
     if (p.text) {
@@ -114,8 +146,8 @@
       var img = document.createElement("img");
       img.src = src(p.thumb || p.image);
       img.alt = "";
-      img.loading = "lazy";
       img.decoding = "async";
+      img.draggable = false;
       if (p.ratio) {
         img.width = 800;
         img.height = Math.round(800 / p.ratio);
@@ -134,44 +166,487 @@
     return b;
   }
 
-  function buildCluster(g, order) {
-    var kind = g.kind === "wide" ? "wide" : "col";
-    var sec = el("section", "cluster cluster--" + kind);
-    sec.style.setProperty("--i", order);
-    sec.setAttribute("aria-label", "Serie: " + g.title);
-
-    var head = el("header", "cluster-head");
-    head.appendChild(el("h2", "cluster-title", g.title));
-    if (g.note) head.appendChild(el("p", "cluster-note", g.note));
-    var meta = el("span", "cluster-meta");
-    head.appendChild(meta);
-    sec.appendChild(head);
-
-    var body = el("div", "cluster-body");
-    var members = pieces.filter(function (p) { return p.groupId === g.id; });
-    members.forEach(function (p, k) { body.appendChild(buildPiece(p, true, k)); });
-    sec.appendChild(body);
-
-    clusters.push({ el: sec, meta: meta, group: g, members: members });
-    return sec;
+  /* Posición: del layout. Una pieza sin coordenadas se coloca a la derecha. */
+  var spill = 0;
+  function place(p) {
+    var l = LAYOUT.pieces[p.id];
+    if (!l) {
+      l = { x: LAYOUT.world.w + 160, y: 260 + spill * 360, w: 260 };
+      spill++;
+    }
+    p._x = l.x; p._y = l.y; p._w = l.w;
+    var b = els[p.id];
+    b.style.left = l.x + "px";
+    b.style.top = l.y + "px";
+    b.style.width = l.w + "px";
   }
 
-  function buildBoard() {
+  function buildWorld() {
     var frag = document.createDocumentFragment();
-    var seen = {};
-    var order = 0;
-    pieces.forEach(function (p) {
-      if (p.groupId && groups[p.groupId]) {
-        if (!seen[p.groupId]) {
-          seen[p.groupId] = true;
-          frag.appendChild(buildCluster(groups[p.groupId], order++));
-        }
-        return;
-      }
-      frag.appendChild(buildPiece(p, false, order++));
+    pieces.forEach(function (p, i) { frag.appendChild(buildPiece(p, i)); });
+
+    // zonas: rótulos tenues, sin paneles
+    (LAYOUT.zones || []).forEach(function (z) {
+      var t = el("div", "zone-label", z.title);
+      t.style.left = z.x + "px";
+      t.style.top = z.y + "px";
+      t.setAttribute("aria-hidden", "true");
+      frag.appendChild(t);
+      zoneLabels.push({ el: t, ids: z.ids });
     });
-    board.appendChild(frag);
+
+    // series: título pequeño sobre el grupo (se coloca tras medir)
+    (DATA.groups || []).forEach(function (g) {
+      var wrap = el("div", "group-label");
+      wrap.setAttribute("aria-hidden", "true");
+      wrap.appendChild(el("b", null, g.title));
+      if (g.note) wrap.appendChild(el("i", null, g.note));
+      frag.appendChild(wrap);
+      groupLabels.push({
+        el: wrap, group: g,
+        ids: pieces.filter(function (p) { return p.groupId === g.id; }).map(function (p) { return p.id; })
+      });
+    });
+    world.appendChild(frag);
+    pieces.forEach(place);
   }
+
+  /* medidas reales (alto de notas y pies) -> tamaño del mundo y minimapa */
+  function measure() {
+    var maxX = 0, maxY = 0;
+    pieces.forEach(function (p) {
+      p._h = els[p.id].offsetHeight;
+      maxX = Math.max(maxX, p._x + p._w);
+      maxY = Math.max(maxY, p._y + p._h);
+    });
+    W = Math.max(LAYOUT.world.w, maxX + 260);
+    H = Math.max(LAYOUT.world.h, maxY + 260);
+
+    groupLabels.forEach(function (g) {
+      var m = g.ids.map(function (id) { return byId[id]; });
+      g.el.style.left = Math.min.apply(null, m.map(function (p) { return p._x; })) + "px";
+      g.el.style.top = (Math.min.apply(null, m.map(function (p) { return p._y; })) - 70) + "px";
+    });
+
+    mmMap.style.aspectRatio = W + " / " + H;
+    pieces.forEach(function (p) {
+      var d = mmDots[p.id];
+      if (!d) {
+        d = el("i", "mm-dot mm-dot--" + p._type);
+        mmMap.insertBefore(d, mmView);
+        mmDots[p.id] = d;
+        d.classList.toggle("is-off", !p._on);
+      }
+      d.style.left = (p._x / W * 100) + "%";
+      d.style.top = (p._y / H * 100) + "%";
+      d.style.width = (p._w / W * 100) + "%";
+      d.style.height = (p._h / H * 100) + "%";
+    });
+  }
+
+  /* ==================================================================
+     2. CÁMARA: estado único + transformaciones
+     ================================================================== */
+
+  var PAD = 180;                    // holgura fuera de las piezas, en unidades del mundo
+  var MAX_Z = 2.4;
+  var cam = { x: 0, y: 0, z: 1 };
+  var vw = 1, vh = 1;
+
+  function measureStage() {
+    var r = stage.getBoundingClientRect();
+    vw = Math.max(1, r.width);
+    vh = Math.max(1, r.height);
+  }
+
+  function fitZoom() {
+    return Math.min(vw / (W + 2 * PAD), vh / (H + 2 * PAD));
+  }
+  function minZoom() { return fitZoom(); }
+
+  function clampCam(c) {
+    c.z = clamp(c.z, minZoom(), MAX_Z);
+    var sw = (W + 2 * PAD) * c.z, sh = (H + 2 * PAD) * c.z;
+    if (sw <= vw) c.x = (vw - W * c.z) / 2;
+    else c.x = clamp(c.x, vw - (W + PAD) * c.z, PAD * c.z);
+    if (sh <= vh) c.y = (vh - H * c.z) / 2;
+    else c.y = clamp(c.y, vh - (H + PAD) * c.z, PAD * c.z);
+    return c;
+  }
+
+  var frameQueued = false;
+  function applyCam() {
+    clampCam(cam);
+    if (!frameQueued) {
+      frameQueued = true;
+      raf(render);
+    }
+    scheduleUpgrade();
+  }
+
+  /* pintado: lo único que ocurre en cada movimiento */
+  function render() {
+    frameQueued = false;
+    world.style.transform = "translate3d(" + cam.x + "px," + cam.y + "px,0) scale(" + cam.z + ")";
+    zoomVal.textContent = Math.round(cam.z * 100) + " %";
+    stage.classList.toggle("is-far", cam.z < 0.34);
+
+    var step = 56 * cam.z;
+    stage.style.backgroundSize = step + "px " + step + "px";
+    stage.style.backgroundPosition = cam.x + "px " + cam.y + "px";
+
+    // minimapa derivado de la cámara
+    var x = -cam.x / cam.z, y = -cam.y / cam.z, w = vw / cam.z, h = vh / cam.z;
+    var l = clamp(x, 0, W), t = clamp(y, 0, H);
+    var r = clamp(x + w, 0, W), b = clamp(y + h, 0, H);
+    mmView.style.left = (l / W * 100) + "%";
+    mmView.style.top = (t / H * 100) + "%";
+    mmView.style.width = Math.max(0, (r - l) / W * 100) + "%";
+    mmView.style.height = Math.max(0, (b - t) / H * 100) + "%";
+  }
+
+  /* zoom manteniendo fijo el punto (sx, sy) en pantalla */
+  function zoomAt(sx, sy, nz) {
+    nz = clamp(nz, minZoom(), MAX_Z);
+    var k = nz / cam.z;
+    cam.x = sx - (sx - cam.x) * k;
+    cam.y = sy - (sy - cam.y) * k;
+    cam.z = nz;
+    applyCam();
+  }
+
+  /* transiciones suaves de cámara */
+  var anim = null;
+  function stopAnim() { anim = null; }
+
+  function animateTo(target, ms) {
+    var to = clampCam({ x: target.x, y: target.y, z: target.z });
+    if (reduceMotion || !ms) {
+      cam.x = to.x; cam.y = to.y; cam.z = to.z;
+      applyCam();
+      return;
+    }
+    stopInertia();
+    var from = { x: cam.x, y: cam.y, z: cam.z };
+    var t0 = performance.now();
+    var mine = anim = {};
+    // interpolamos el centro en el espacio del mundo y el zoom en escala logarítmica
+    var c0 = { x: (vw / 2 - from.x) / from.z, y: (vh / 2 - from.y) / from.z };
+    var c1 = { x: (vw / 2 - to.x) / to.z, y: (vh / 2 - to.y) / to.z };
+    (function tick(now) {
+      if (anim !== mine) return;
+      var t = clamp((now - t0) / ms, 0, 1);
+      var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      var z = from.z * Math.pow(to.z / from.z, e);
+      var cx = c0.x + (c1.x - c0.x) * e, cy = c0.y + (c1.y - c0.y) * e;
+      cam.z = z;
+      cam.x = vw / 2 - cx * z;
+      cam.y = vh / 2 - cy * z;
+      applyCam();
+      if (t < 1) raf(tick); else anim = null;
+    })(t0);
+  }
+
+  function camFor(rect, pad, maxZ) {
+    var z = Math.min((vw - 2 * pad) / rect.w, (vh - 2 * pad) / rect.h, maxZ);
+    z = clamp(z, minZoom(), MAX_Z);
+    var cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+    return { x: vw / 2 - cx * z, y: vh / 2 - cy * z, z: z };
+  }
+
+  function boundsOf(list) {
+    if (!list.length) return null;
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    list.forEach(function (p) {
+      x0 = Math.min(x0, p._x); y0 = Math.min(y0, p._y - 12);
+      x1 = Math.max(x1, p._x + p._w); y1 = Math.max(y1, p._y + (p._h || 200));
+    });
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+
+  /* encuadra lo que se está mostrando (todo, o los resultados del filtro) */
+  function fitVisible(animate) {
+    var r = boundsOf(pieces.filter(function (p) { return p._on; }));
+    if (!r) return;
+    var pad = Math.max(48, Math.min(vw, vh) * 0.09);
+    animateTo(camFor(r, pad, 1.05), animate ? 650 : 0);
+  }
+
+  /* ---------- inercia ---------- */
+
+  var inertia = null;
+  function stopInertia() { inertia = null; }
+
+  function startInertia(vx, vy) {
+    if (reduceMotion) return;
+    if (Math.hypot(vx, vy) < 0.15) return;
+    var mine = inertia = { vx: vx, vy: vy };
+    var last = performance.now();
+    (function tick(now) {
+      if (inertia !== mine) return;
+      var dt = Math.min(48, now - last);
+      last = now;
+      var px = cam.x, py = cam.y;
+      cam.x += mine.vx * dt;
+      cam.y += mine.vy * dt;
+      applyCam();
+      if (cam.x === px) mine.vx = 0;     // chocó con un límite
+      if (cam.y === py) mine.vy = 0;
+      var f = Math.pow(0.94, dt / 16);
+      mine.vx *= f; mine.vy *= f;
+      if (Math.hypot(mine.vx, mine.vy) < 0.02) { inertia = null; return; }
+      raf(tick);
+    })(last);
+  }
+
+  /* ==================================================================
+     3. ENTRADA: arrastre, pellizco, rueda y teclado
+     ================================================================== */
+
+  var ptrs = {};            // pointerId -> {x, y}
+  var drag = null;
+  var pinch = null;
+  var suppressClick = false;
+  var MOVE_THRESHOLD = 6;
+
+  function stagePoint(e) {
+    var r = stage.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function beginPan(id) {
+    var p = ptrs[id];
+    drag = { id: id, x0: p.x, y0: p.y, cx: cam.x, cy: cam.y, moved: false, vx: 0, vy: 0, t: performance.now(), lx: p.x, ly: p.y };
+  }
+
+  stage.addEventListener("pointerdown", function (e) {
+    if (e.target.closest(".arch-ui")) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    stopAnim();
+    stopInertia();
+    ptrs[e.pointerId] = stagePoint(e);
+    var ids = Object.keys(ptrs);
+    if (ids.length === 1) {
+      beginPan(e.pointerId);
+      suppressClick = false;
+    } else if (ids.length === 2) {
+      var a = ptrs[ids[0]], b = ptrs[ids[1]];
+      var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      pinch = {
+        d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        wx: (mx - cam.x) / cam.z, wy: (my - cam.y) / cam.z, z0: cam.z
+      };
+      drag = null;
+      suppressClick = true;
+      stage.classList.add("is-dragging");
+    }
+  });
+
+  stage.addEventListener("pointermove", function (e) {
+    if (!(e.pointerId in ptrs)) return;
+    var pt = stagePoint(e);
+    ptrs[e.pointerId] = pt;
+
+    if (pinch) {
+      var ids = Object.keys(ptrs);
+      if (ids.length < 2) return;
+      var a = ptrs[ids[0]], b = ptrs[ids[1]];
+      var d = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+      var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      var nz = clamp(pinch.z0 * d / pinch.d0, minZoom(), MAX_Z);
+      cam.z = nz;
+      cam.x = mx - pinch.wx * nz;
+      cam.y = my - pinch.wy * nz;
+      applyCam();
+      return;
+    }
+
+    if (!drag || drag.id !== e.pointerId) return;
+    var dx = pt.x - drag.x0, dy = pt.y - drag.y0;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < MOVE_THRESHOLD) return;
+      drag.moved = true;
+      suppressClick = true;
+      stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ya soltado */ }
+    }
+    var now = performance.now();
+    var dt = Math.max(1, now - drag.t);
+    drag.vx = 0.75 * drag.vx + 0.25 * ((pt.x - drag.lx) / dt);
+    drag.vy = 0.75 * drag.vy + 0.25 * ((pt.y - drag.ly) / dt);
+    drag.t = now; drag.lx = pt.x; drag.ly = pt.y;
+    cam.x = drag.cx + dx;
+    cam.y = drag.cy + dy;
+    applyCam();
+  });
+
+  function endPointer(e) {
+    if (!(e.pointerId in ptrs)) return;
+    delete ptrs[e.pointerId];
+    if (pinch) {
+      if (Object.keys(ptrs).length < 2) {
+        pinch = null;
+        var rest = Object.keys(ptrs)[0];
+        if (rest !== undefined) { beginPan(Number(rest)); drag.moved = true; }
+        else stage.classList.remove("is-dragging");
+      }
+      return;
+    }
+    if (drag && drag.id === e.pointerId) {
+      var wasMoved = drag.moved;
+      var idle = performance.now() - drag.t;
+      var vx = drag.vx, vy = drag.vy;
+      drag = null;
+      stage.classList.remove("is-dragging");
+      if (wasMoved && e.type === "pointerup" && idle < 90) startInertia(vx, vy);
+      setTimeout(function () { suppressClick = false; }, 0);
+    }
+  }
+  stage.addEventListener("pointerup", endPointer);
+  stage.addEventListener("pointercancel", endPointer);
+
+  // un arrastre nunca debe abrir la pieza sobre la que se suelta
+  stage.addEventListener("click", function (e) {
+    if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false; }
+  }, true);
+
+  stage.addEventListener("dragstart", function (e) { e.preventDefault(); });
+
+  stage.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    if (e.target.closest(".arch-ui")) return;
+    stopAnim(); stopInertia();
+    var unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+    var k = Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0016));
+    var pt = stagePoint(e);
+    zoomAt(pt.x, pt.y, cam.z * k);
+  }, { passive: false });
+
+  stage.addEventListener("keydown", function (e) {
+    if (e.target !== stage) return;
+    var s = e.shiftKey ? 260 : 90;
+    stopAnim(); stopInertia();
+    switch (e.key) {
+      case "ArrowLeft": cam.x += s; break;
+      case "ArrowRight": cam.x -= s; break;
+      case "ArrowUp": cam.y += s; break;
+      case "ArrowDown": cam.y -= s; break;
+      case "+": case "=": e.preventDefault(); zoomAt(vw / 2, vh / 2, cam.z * 1.25); return;
+      case "-": case "_": e.preventDefault(); zoomAt(vw / 2, vh / 2, cam.z / 1.25); return;
+      case "0": e.preventDefault(); fitVisible(true); return;
+      default: return;
+    }
+    e.preventDefault();
+    applyCam();
+  });
+
+  /* el foco por teclado sobre una pieza fuera de vista mueve la cámara, no el scroll */
+  world.addEventListener("focusin", function (e) {
+    var b = e.target.closest(".piece");
+    if (!b) return;
+    stage.scrollLeft = 0; stage.scrollTop = 0;
+    var p = byId[b.dataset.id];
+    if (!p) return;
+    var m = 40;
+    var l = cam.x + p._x * cam.z, t = cam.y + p._y * cam.z;
+    var r = l + p._w * cam.z, bt = t + (p._h || 200) * cam.z;
+    if (l < m || t < m || r > vw - m || bt > vh - m) {
+      stopAnim(); stopInertia();
+      cam.x = vw / 2 - (p._x + p._w / 2) * cam.z;
+      cam.y = vh / 2 - (p._y + (p._h || 200) / 2) * cam.z;
+      applyCam();
+    }
+  });
+  stage.addEventListener("scroll", function () { stage.scrollLeft = 0; stage.scrollTop = 0; });
+
+  /* ---------- botones de zoom / ver todo / mapa ---------- */
+
+  function stepZoom(f) {
+    var nz = clamp(cam.z * f, minZoom(), MAX_Z);
+    var k = nz / cam.z;
+    animateTo({ x: vw / 2 - (vw / 2 - cam.x) * k, y: vh / 2 - (vh / 2 - cam.y) * k, z: nz }, 220);
+  }
+  $("#zoom-in").addEventListener("click", function () { stepZoom(1.3); });
+  $("#zoom-out").addEventListener("click", function () { stepZoom(1 / 1.3); });
+  $("#fit").addEventListener("click", function () { fitVisible(true); });
+
+  var mmToggle = $("#mm-toggle");
+  function showMap(open, remember) {
+    minimap.classList.toggle("is-folded", !open);
+    mmToggle.setAttribute("aria-pressed", String(open));
+    if (!remember) return;
+    try { sessionStorage.setItem("archivo-map", open ? "1" : "0"); } catch (e) { /* sin storage */ }
+  }
+  mmToggle.addEventListener("click", function () { showMap(minimap.classList.contains("is-folded"), true); });
+  $("#mm-fold").addEventListener("click", function () { showMap(false, true); mmToggle.focus({ preventScroll: true }); });
+
+  /* ---------- interacción del minimapa ---------- */
+
+  var mmDrag = null;
+  function mmWorldPoint(e) {
+    var r = mmMap.getBoundingClientRect();
+    return {
+      x: clamp((e.clientX - r.left) / r.width, 0, 1) * W,
+      y: clamp((e.clientY - r.top) / r.height, 0, 1) * H
+    };
+  }
+  function centerOn(wx, wy) {
+    cam.x = vw / 2 - wx * cam.z;
+    cam.y = vh / 2 - wy * cam.z;
+    applyCam();
+  }
+
+  mmMap.addEventListener("pointerdown", function (e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    stopAnim(); stopInertia();
+    var p = mmWorldPoint(e);
+    // si se agarra el propio rectángulo, se conserva el desplazamiento relativo
+    var cx = (vw / 2 - cam.x) / cam.z, cy = (vh / 2 - cam.y) / cam.z;
+    var onRect = e.target === mmView;
+    mmDrag = { dx: onRect ? cx - p.x : 0, dy: onRect ? cy - p.y : 0 };
+    if (!onRect) centerOn(p.x, p.y);
+    mmMap.classList.add("is-dragging");
+    mmMap.setPointerCapture(e.pointerId);
+  });
+  mmMap.addEventListener("pointermove", function (e) {
+    if (!mmDrag) return;
+    var p = mmWorldPoint(e);
+    centerOn(p.x + mmDrag.dx, p.y + mmDrag.dy);
+  });
+  function mmEnd(e) {
+    if (!mmDrag) return;
+    mmDrag = null;
+    mmMap.classList.remove("is-dragging");
+    try { mmMap.releasePointerCapture(e.pointerId); } catch (err) { /* nada */ }
+  }
+  mmMap.addEventListener("pointerup", mmEnd);
+  mmMap.addEventListener("pointercancel", mmEnd);
+
+  /* ---------- calidad: imagen grande al acercarse ---------- */
+
+  var upTimer = null;
+  function scheduleUpgrade() {
+    clearTimeout(upTimer);
+    upTimer = setTimeout(upgradeVisible, 220);
+  }
+  function upgradeVisible() {
+    if (cam.z < 0.85) return;
+    pieces.forEach(function (p) {
+      if (p._big || !p._on || !p.image || !p.thumb || p.thumb === p.image) return;
+      var l = cam.x + p._x * cam.z, t = cam.y + p._y * cam.z;
+      if (l > vw || t > vh || l + p._w * cam.z < 0 || t + (p._h || 200) * cam.z < 0) return;
+      p._big = true;
+      var img = els[p.id].querySelector("img");
+      var big = new Image();
+      big.onload = function () { if (img) img.src = big.src; };
+      big.src = src(p.image);
+    });
+  }
+
+  /* ==================================================================
+     4. FILTRO Y BÚSQUEDA
+     ================================================================== */
 
   function buildFilter() {
     function item(key, name, n, all) {
@@ -204,6 +679,8 @@
     document.addEventListener("focusin", function (e) {
       if (isOpen() && !filterEl.contains(e.target)) toggleMenu(false);
     });
+    // tocar el lienzo también cierra el menú (el lienzo captura el puntero)
+    stage.addEventListener("pointerdown", function () { if (isOpen()) toggleMenu(false); });
   }
 
   function isOpen() { return filterMenu.classList.contains("is-open"); }
@@ -218,8 +695,6 @@
     return catCount[key] ? catCount[key].name : "";
   }
 
-  /* ---------- filtrado ---------- */
-
   function matches(p) {
     if (state.cat !== null && p._catKeys.indexOf(state.cat) === -1) return false;
     if (!state.q) return true;
@@ -230,27 +705,29 @@
     return true;
   }
 
+  var needFrame = false;
+
   function apply() {
     var visible = 0;
     pieces.forEach(function (p) {
       var ok = matches(p);
       p._on = ok;
       els[p.id].hidden = !ok;
+      if (mmDots[p.id]) mmDots[p.id].classList.toggle("is-off", !ok);
       if (ok) visible++;
     });
 
-    clusters.forEach(function (c) {
-      var n = c.members.filter(function (p) { return p._on; }).length;
-      c.el.hidden = n === 0;
-      c.meta.textContent = c.group.year + " · " + n + (n === 1 ? " pieza" : " piezas");
-    });
+    function sync(item) {
+      item.el.hidden = !item.ids.some(function (id) { return byId[id] && byId[id]._on; });
+    }
+    groupLabels.forEach(sync);
+    zoneLabels.forEach(sync);
 
     var filtered = state.cat !== null || state.q !== "";
     countEl.textContent = (filtered ? visible + " de " + pieces.length : String(visible)) +
       (visible === 1 && !filtered ? " pieza" : " piezas");
     resetEl.hidden = !filtered;
 
-    board.hidden = visible === 0;
     emptyEl.hidden = visible !== 0;
     if (visible === 0) {
       var parts = [];
@@ -270,16 +747,24 @@
     if (location.hash !== hash) {
       try { history.replaceState(null, "", location.pathname + location.search + hash); } catch (e) { /* file:// */ }
     }
+
+    if (needFrame) {
+      needFrame = false;
+      if (visible > 0) fitVisible(true);
+    }
+    scheduleUpgrade();
   }
 
   function setCat(c) {
     state.cat = c;
+    needFrame = true;
     apply();
   }
 
   function setQuery(q) {
     state.q = q.trim();
     if (searchEl.value !== q) searchEl.value = q;
+    needFrame = true;
     apply();
   }
 
@@ -287,6 +772,7 @@
     state.cat = null;
     state.q = "";
     searchEl.value = "";
+    needFrame = true;
     apply();
     searchEl.focus({ preventScroll: true });
   }
@@ -294,7 +780,7 @@
   var tm;
   searchEl.addEventListener("input", function () {
     clearTimeout(tm);
-    tm = setTimeout(function () { setQuery(searchEl.value); }, 120);
+    tm = setTimeout(function () { setQuery(searchEl.value); }, 180);
   });
   searchEl.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && searchEl.value) { e.preventDefault(); setQuery(""); }
@@ -302,7 +788,9 @@
   resetEl.addEventListener("click", clearAll);
   emptyReset.addEventListener("click", clearAll);
 
-  /* ---------- vista ampliada ---------- */
+  /* ==================================================================
+     5. VISTA AMPLIADA
+     ================================================================== */
 
   var modal = $("#modal");
   var figEl = $("#modal-fig");
@@ -365,8 +853,7 @@
     figEl.textContent = "";
 
     if (p.text) {
-      var note = el("div", "arch-modal-note tone-" + (p.tone || "paper"), p.text);
-      figEl.appendChild(note);
+      figEl.appendChild(el("div", "arch-modal-note tone-" + (p.tone || "paper"), p.text));
     } else {
       var img = document.createElement("img");
       img.alt = p.title + (p.description ? ". " + p.description : "");
@@ -436,16 +923,16 @@
     document.documentElement.classList.remove("is-locked");
     current = null;
     if (lastTrigger && document.body.contains(lastTrigger) && !lastTrigger.hidden) {
-      lastTrigger.focus({ preventScroll: true });
+      lastTrigger.focus({ preventScroll: true });   // el foco vuelve sin mover la cámara
     }
+    stage.scrollLeft = 0; stage.scrollTop = 0;
   }
 
   function step(dir) {
     if (!current) return;
     var group = members(current);
     if (group.length < 2) return;
-    var k = (group.indexOf(current) + dir + group.length) % group.length;
-    fill(group[k]);
+    fill(group[(group.indexOf(current) + dir + group.length) % group.length]);
   }
 
   board.addEventListener("click", function (e) {
@@ -461,7 +948,6 @@
       closeModal();
       state.cat = null;
       setQuery(t);
-      window.scrollTo(0, Math.max(0, board.getBoundingClientRect().top + window.scrollY - 220));
       return;
     }
     var th = e.target.closest(".arch-thumb");
@@ -498,38 +984,83 @@
     if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
   }, { passive: true });
 
-  /* ---------- volver al inicio + altura de cabecera ---------- */
-
-  function onScroll() { toTop.hidden = window.scrollY < 800; }
-  window.addEventListener("scroll", onScroll, { passive: true });
-  toTop.addEventListener("click", function () {
-    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-  });
+  /* ==================================================================
+     6. ARRANQUE, REDIMENSIONADO, HASH
+     ================================================================== */
 
   function setHeaderH() {
     var h = document.querySelector(".site-header");
     if (h) document.documentElement.style.setProperty("--header-h", h.offsetHeight + "px");
   }
-  window.addEventListener("resize", setHeaderH);
-
-  /* ---------- hash (#ropa) ---------- */
 
   function readHash() {
-    var k = norm(decodeURIComponent(location.hash.replace("#", "")));
+    var k;
+    try { k = norm(decodeURIComponent(location.hash.replace("#", ""))); } catch (e) { return null; }
     return catCount[k] ? k : null;
   }
   window.addEventListener("hashchange", function () {
     var k = readHash();
-    if (k !== state.cat) { state.cat = k; apply(); }
+    if (k !== state.cat) { state.cat = k; needFrame = true; apply(); }
   });
 
-  /* ---------- arranque ---------- */
+  var resizeTimer = null;
+  var camReady = false;
 
-  buildBoard();
+  /* encuadre inicial: la zona «home» del layout, o los resultados si hay filtro en la URL */
+  function initCamera() {
+    camReady = true;
+    if (state.cat !== null) {
+      fitVisible(false);
+    } else {
+      var home = LAYOUT.home || { x: W / 2, y: H / 2, z: 0.6 };
+      var z0 = clamp(Math.max(home.z, minZoom()), minZoom(), MAX_Z);
+      cam.z = z0;
+      cam.x = vw / 2 - home.x * z0;
+      cam.y = vh / 2 - home.y * z0;
+      applyCam();
+    }
+    render();
+  }
+
+  function onResize() {
+    var oldW = vw, oldH = vh;
+    setHeaderH();
+    measureStage();
+    if (!camReady) {
+      if (vw >= 100 && vh >= 100) initCamera();
+      return;
+    }
+    // conserva el punto del mundo que estaba en el centro de la vista
+    var cx = (oldW / 2 - cam.x) / cam.z, cy = (oldH / 2 - cam.y) / cam.z;
+    cam.x = vw / 2 - cx * cam.z;
+    cam.y = vh / 2 - cy * cam.z;
+    applyCam();
+  }
+  function queueResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(onResize, 40);
+  }
+  window.addEventListener("resize", queueResize);
+  window.addEventListener("orientationchange", function () { setTimeout(onResize, 200); });
+  if (window.ResizeObserver) new ResizeObserver(queueResize).observe(stage);
+
+  buildWorld();
   buildFilter();
   state.cat = readHash();
   setHeaderH();
+  measureStage();
+  measure();
   apply();
-  onScroll();
+
+  // mapa plegado por defecto en pantallas muy estrechas
+  var storedMap = null;
+  try { storedMap = sessionStorage.getItem("archivo-map"); } catch (e) { /* nada */ }
+  showMap(storedMap !== null ? storedMap === "1" : window.innerWidth > 620);
+
+  if (vw >= 100 && vh >= 100) initCamera();
+
+  // las notas y los pies pueden cambiar de alto al cargar las fuentes
+  function remeasure() { measure(); applyCam(); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+  window.addEventListener("load", remeasure);
 })();
