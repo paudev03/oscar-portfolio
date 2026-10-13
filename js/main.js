@@ -105,6 +105,57 @@
     });
   }
 
+  /* ---------- Contact form ----------
+     There is no mail backend on this site (static hosting), so the form does
+     not pretend to send anything: it builds a ready-to-send email and opens
+     the visitor's mail app. Nothing leaves the page until they press send. */
+  var bbForm = document.getElementById("bb-form");
+  if (bbForm) {
+    var bbStatus = document.getElementById("bb-status");
+    var lastMessage = "";
+
+    var showStatus = function (html) {
+      bbStatus.hidden = false;
+      bbStatus.innerHTML = html;
+    };
+
+    bbForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var data = new FormData(bbForm);
+      var name = String(data.get("name") || "").trim();
+      var email = String(data.get("email") || "").trim();
+      var type = String(data.get("type") || "").trim();
+      var message = String(data.get("message") || "").trim();
+      var to = bbForm.getAttribute("data-to");
+
+      var subject = "Project proposal" + (type ? " — " + type : "") + " — " + name;
+      lastMessage = "To: " + to + "\nSubject: " + subject + "\n\n" +
+        message + "\n\n— " + name + "\n" + email + (type ? "\nProject: " + type : "");
+      var body = message + "\n\n— " + name + "\n" + email + (type ? "\nProject: " + type : "");
+
+      showStatus(
+        "Your email app should open with the message ready. " +
+        "<strong>Nothing has been sent yet</strong> — press send there. " +
+        "If nothing opened, <button type=\"button\" id=\"bb-copy\">copy the message</button> " +
+        "and send it to " + to + "."
+      );
+      window.location.href = "mailto:" + to +
+        "?subject=" + encodeURIComponent(subject) +
+        "&body=" + encodeURIComponent(body);
+    });
+
+    bbStatus.addEventListener("click", function (e) {
+      if (e.target.id !== "bb-copy") return;
+      var btn = e.target;
+      var done = function () { btn.textContent = "copied"; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(lastMessage).then(done, done);
+      } else {
+        done();
+      }
+    });
+  }
+
   /* ---------- Project detail overlay (Selected Work) ----------
      Clicking a project's main image opens its detail in place, over
      Selected Work — no new page, no new tab. Closes via the Close
