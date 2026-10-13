@@ -856,25 +856,49 @@ body.page-archivo {
   .arch-search { flex: 1 1 auto; }
   .arch-count { white-space: nowrap; }
   .arch-nav { left: 10px; bottom: 10px; }
-  .arch-minimap { right: 10px; bottom: 58px; width: 124px; padding: 4px; }
-  .arch-minimap-fold { top: -1px; }
 }
 
 /* ---------- Cabecera sin título: filtros a la izquierda ---------- */
 .arch-head { justify-content: flex-start; align-items: center; }
 .arch-controls { margin-right: auto; }
 
-/* botón para recuperar el minimapa: misma esquina inferior derecha */
-.arch-mm-open {
+/* ---------- Minimapa: abierto ⇄ botón «Mapa», un solo componente ---------- */
+.arch-minimap {
+  padding: 0;
+  overflow: hidden;
+  transition: width 240ms var(--ease), height 240ms var(--ease);
+}
+.arch-minimap.is-folded {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
+.arch-mm-body {
   position: absolute;
-  right: var(--margin-outer);
-  bottom: 16px;
-  z-index: 40;
-  display: none;
+  right: 0; bottom: 0;
+  width: clamp(150px, 15vw, 220px);
+  padding: 6px;
+  box-sizing: border-box;
+  transition: opacity 160ms var(--ease);
+}
+.is-folded .arch-mm-body { opacity: 0; pointer-events: none; }
+.arch-minimap-fold {
+  position: absolute;
+  top: 6px; right: 6px;
+  transform: none;
+  width: 22px; height: 22px;
+  background: var(--ink);
+  color: var(--paper);
+}
+.arch-mm-label {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: max-content;
   height: 40px;
   padding: 0 14px;
-  background: var(--paper);
-  border: 1px solid var(--ink);
+  background: none;
+  border: 0;
   border-radius: 0;
   cursor: pointer;
   font-family: var(--font-sans);
@@ -883,14 +907,18 @@ body.page-archivo {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink);
-  box-shadow: 0 14px 28px -20px rgba(20, 19, 17, 0.6);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.arch-mm-open:hover { background: var(--ink); color: var(--paper); }
-.arch-mm-open:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.is-map-folded .arch-mm-open { display: block; }
+.is-folded .arch-mm-label { opacity: 1; pointer-events: auto; transition-delay: 80ms; }
+.arch-mm-label:hover { background: var(--ink); color: var(--paper); }
+.arch-mm-label:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
 
 @media (max-width: 620px) {
   .arch-head { justify-content: flex-start; }
-  .arch-mm-open { right: 10px; bottom: 10px; height: 38px; }
-  .arch-minimap { bottom: 10px; width: 108px; }
+  .arch-minimap { right: 10px; bottom: 10px; }
+  .arch-mm-body { width: 108px; padding: 4px; }
+  .arch-mm-label { height: 38px; }
 }

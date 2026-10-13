@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/archivo.css">
+<link rel="stylesheet" href="css/style.css?v=20261013">
+<link rel="stylesheet" href="css/archivo.css?v=20261013">
 </head>
 <body class="page-archivo">
 <a class="skip-link" href="#stage">Saltar al archivo</a>
@@ -76,13 +76,16 @@
       <button type="button" id="fit" class="arch-nav-btn arch-nav-btn--text">Ver todo</button>
     </div>
 
+    <!-- Un solo componente con dos estados: mapa abierto / botón «Mapa» -->
     <aside class="arch-minimap arch-ui" id="minimap" aria-label="Minimapa del archivo">
-      <div class="arch-minimap-map" id="mm-map">
-        <div class="arch-mm-view" id="mm-view" aria-hidden="true"></div>
+      <div class="arch-mm-body" id="mm-body">
+        <div class="arch-minimap-map" id="mm-map">
+          <div class="arch-mm-view" id="mm-view" aria-hidden="true"></div>
+        </div>
+        <button type="button" class="arch-minimap-fold" id="mm-fold" aria-label="Minimizar minimapa">−</button>
       </div>
-      <button type="button" class="arch-minimap-fold" id="mm-fold" aria-label="Plegar minimapa">−</button>
+      <button type="button" class="arch-mm-label" id="mm-toggle" aria-controls="mm-body" aria-expanded="true">Mapa</button>
     </aside>
-    <button type="button" id="mm-toggle" class="arch-mm-open arch-ui" aria-controls="minimap" aria-pressed="true">Mapa</button>
   </section>
 </main>
 
@@ -113,9 +116,9 @@
   </div>
 </div>
 
-<script src="js/main.js"></script>
-<script src="js/archivo-data.js"></script>
-<script src="js/archivo-layout.js"></script>
-<script src="js/archivo.js"></script>
+<script src="js/main.js?v=20261013"></script>
+<script src="js/archivo-data.js?v=20261013"></script>
+<script src="js/archivo-layout.js?v=20261013"></script>
+<script src="js/archivo.js?v=20261013"></script>
 </body>
 </html>

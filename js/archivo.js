@@ -242,6 +242,7 @@
       d.style.width = (p._w / W * 100) + "%";
       d.style.height = (p._h / H * 100) + "%";
     });
+    if (typeof sizeMinimap === "function") sizeMinimap();
   }
 
   /* ==================================================================
@@ -570,16 +571,34 @@
   $("#zoom-out").addEventListener("click", function () { stepZoom(1 / 1.3); });
   $("#fit").addEventListener("click", function () { fitVisible(true); });
 
+  /* Minimapa: un único contenedor con dos estados. Abierto = mapa; cerrado = el
+     propio contenedor se contrae hasta el botón «Mapa», en la misma esquina. */
   var mmToggle = $("#mm-toggle");
+  var mmBody = $("#mm-body");
+  function sizeMinimap() {
+    var open = !minimap.classList.contains("is-folded");
+    var el_ = open ? mmBody : mmToggle;
+    minimap.style.width = (el_.offsetWidth + 2) + "px";    // +2: borde
+    minimap.style.height = (el_.offsetHeight + 2) + "px";
+  }
   function showMap(open, remember) {
     minimap.classList.toggle("is-folded", !open);
-    stage.classList.toggle("is-map-folded", !open);
-    mmToggle.setAttribute("aria-pressed", String(open));
+    mmToggle.setAttribute("aria-expanded", String(open));
+    mmBody.inert = !open;
+    mmToggle.tabIndex = open ? -1 : 0;
+    sizeMinimap();
     if (!remember) return;
     try { sessionStorage.setItem("archivo-map", open ? "1" : "0"); } catch (e) { /* sin storage */ }
   }
-  mmToggle.addEventListener("click", function () { showMap(minimap.classList.contains("is-folded"), true); });
-  $("#mm-fold").addEventListener("click", function () { showMap(false, true); mmToggle.focus({ preventScroll: true }); });
+  mmToggle.addEventListener("click", function () {
+    showMap(true, true);
+    $("#mm-fold").focus({ preventScroll: true });
+  });
+  $("#mm-fold").addEventListener("click", function () {
+    showMap(false, true);
+    mmToggle.focus({ preventScroll: true });
+  });
+  window.addEventListener("resize", sizeMinimap);
 
   /* ---------- interacción del minimapa ---------- */
 
