@@ -1,0 +1,72 @@
+/* =========================================================
+   Selected Work — hero: "Paint in Motion"
+   Self-contained: only index.html loads this file.
+   Without WebGL / JavaScript a still of the painting is shown.
+   ========================================================= */
+
+.paint {
+  position: relative;
+  height: 360svh;
+}
+
+.paint-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  background: #e9e4d6;
+  touch-action: pan-y;        /* vertical scroll stays native; the paint answers touch moves too */
+}
+
+.paint-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+.is-live .paint-canvas { display: block; }
+
+.paint-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.is-live .paint-fallback { display: none; }
+
+/* wordmark text: the visible logo when the canvas is not running, screen-reader label otherwise */
+.paint-logo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-family: "Archivo", var(--font-sans);
+  font-weight: 700;
+  font-stretch: 125%;
+  font-size: clamp(64px, 15vw, 210px);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  -webkit-text-stroke: 0.04em var(--paper);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+.is-live .paint-logo {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .paint { height: 300svh; }
+}
+
+/* the first project follows the hero directly */
+.paint + .work-list { padding-top: 0; }
+
+/* reduced motion: a single resolved frame, no scroll-bound movement */
+.paint--static { height: 100svh; }
