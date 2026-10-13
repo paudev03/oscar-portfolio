@@ -219,8 +219,12 @@
       maxX = Math.max(maxX, p._x + p._w);
       maxY = Math.max(maxY, p._y + p._h);
     });
-    W = Math.max(LAYOUT.world.w, maxX + 260);
-    H = Math.max(LAYOUT.world.h, maxY + 260);
+    // el mundo abarca exactamente las piezas, con el mismo margen en los cuatro lados
+    var minX = Math.min.apply(null, pieces.map(function (p) { return p._x; }));
+    var minY = Math.min.apply(null, pieces.map(function (p) { return p._y; }));
+    var m = Math.max(120, Math.min(minX, minY));
+    W = maxX + m;
+    H = maxY + m;
 
     groupLabels.forEach(function (g) {
       var m = g.ids.map(function (id) { return byId[id]; });
@@ -249,7 +253,7 @@
      2. CÁMARA: estado único + transformaciones
      ================================================================== */
 
-  var PAD = 180;                    // holgura fuera de las piezas, en unidades del mundo
+  var PAD = 90;                     // holgura fuera del mural, en unidades del mundo
   var MAX_Z = 2.4;
   var cam = { x: 0, y: 0, z: 1 };
   var vw = 1, vh = 1;
@@ -285,11 +289,19 @@
     scheduleUpgrade();
   }
 
+  /* conversión escala interna -> porcentaje visible */
+  function zoomPercent() {
+    var lo = minZoom();
+    if (!(MAX_Z > lo) || !(cam.z > lo)) return 0;
+    var pct = 200 * Math.log(cam.z / lo) / Math.log(MAX_Z / lo);
+    return Math.round(clamp(pct, 0, 200));
+  }
+
   /* pintado: lo único que ocurre en cada movimiento */
   function render() {
     frameQueued = false;
     world.style.transform = "translate3d(" + cam.x + "px," + cam.y + "px,0) scale(" + cam.z + ")";
-    zoomVal.textContent = Math.round(cam.z * 100) + " %";
+    zoomVal.textContent = zoomPercent() + " %";
     stage.classList.toggle("is-far", cam.z < 0.34);
 
     var step = 56 * cam.z;
@@ -366,8 +378,15 @@
   }
 
   /* encuadra lo que se está mostrando (todo, o los resultados del filtro) */
+  function fitWorld(animate) {
+    var z = minZoom();
+    animateTo({ x: (vw - W * z) / 2, y: (vh - H * z) / 2, z: z }, animate ? 650 : 0);
+  }
+
   function fitVisible(animate) {
-    var r = boundsOf(pieces.filter(function (p) { return p._on; }));
+    var on = pieces.filter(function (p) { return p._on; });
+    if (on.length === pieces.length) { fitWorld(animate); return; }
+    var r = boundsOf(on);
     if (!r) return;
     var pad = Math.max(48, Math.min(vw, vh) * 0.09);
     animateTo(camFor(r, pad, 1.05), animate ? 650 : 0);
@@ -1032,12 +1051,7 @@
     if (state.cat !== null) {
       fitVisible(false);
     } else {
-      var home = LAYOUT.home || { x: W / 2, y: H / 2, z: 0.6 };
-      var z0 = clamp(Math.max(home.z, minZoom()), minZoom(), MAX_Z);
-      cam.z = z0;
-      cam.x = vw / 2 - home.x * z0;
-      cam.y = vh / 2 - home.y * z0;
-      applyCam();
+      fitWorld(false);
     }
     render();
   }

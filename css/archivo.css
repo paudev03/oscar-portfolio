@@ -922,3 +922,14 @@ body.page-archivo {
   .arch-mm-body { width: 108px; padding: 4px; }
   .arch-mm-label { height: 38px; }
 }
+
+/* ---------- Separación discreta entre controles y mural ---------- */
+.arch-head {
+  border-bottom: 1px solid rgba(20, 19, 17, 0.16);
+}
+.arch-stage {
+  background-color: #EBE8DE;
+  /* una sombra casi imperceptible bajo la barra: el mural queda "debajo" */
+  box-shadow: inset 0 10px 14px -12px rgba(20, 19, 17, 0.16);
+}
+.arch-stage:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); }
