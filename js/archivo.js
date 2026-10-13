@@ -607,7 +607,7 @@
     mmDrag = { dx: onRect ? cx - p.x : 0, dy: onRect ? cy - p.y : 0 };
     if (!onRect) centerOn(p.x, p.y);
     mmMap.classList.add("is-dragging");
-    mmMap.setPointerCapture(e.pointerId);
+    try { mmMap.setPointerCapture(e.pointerId); } catch (err) { /* puntero ya liberado */ }
   });
   mmMap.addEventListener("pointermove", function (e) {
     if (!mmDrag) return;
