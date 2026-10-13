@@ -1,0 +1,83 @@
+/* =========================================================
+   Selected Work — hero: "A Study in Motion"
+   Self-contained: only index.html loads this file.
+   Without JavaScript the hero is simply the wordmark on paper.
+   ========================================================= */
+
+.study {
+  --u: 10px;
+  position: relative;
+  height: 380svh;
+}
+
+.study-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  perspective: calc(var(--u) * 150);
+  perspective-origin: 50% 46%;
+}
+
+.study-logo {
+  margin: 0;
+  font-family: "Archivo", var(--font-sans);
+  font-weight: 700;
+  font-stretch: 125%;
+  font-size: calc(var(--u) * 14);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  user-select: none;
+}
+
+.study-scene {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  display: none;
+}
+.is-live .study-scene { display: block; }
+
+.pl {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.pl i {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.pl .b { transform: rotateY(180deg); }
+
+/* the stage lives on the ground colour set by JS; the logo is a flat layer under the planes */
+.is-live .study-stage { background: var(--ink); }
+.is-live .study-logo { color: var(--paper); mix-blend-mode: difference; }
+
+.study-wipe {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 0;
+  background: var(--paper);
+  pointer-events: none;
+}
+.study--static .study-wipe { height: 0; }
+
+@media (max-width: 720px) {
+  .study { height: 300svh; }
+  .study-logo { font-size: calc(var(--u) * 15); }
+}
+
+/* the first project follows the hero directly */
+.study + .work-list { padding-top: 0; }
+
+/* reduced motion: one resolved still, no scroll-bound movement */
+.study--static { height: 100svh; }
