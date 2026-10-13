@@ -859,3 +859,38 @@ body.page-archivo {
   .arch-minimap { right: 10px; bottom: 58px; width: 124px; padding: 4px; }
   .arch-minimap-fold { top: -1px; }
 }
+
+/* ---------- Cabecera sin título: filtros a la izquierda ---------- */
+.arch-head { justify-content: flex-start; align-items: center; }
+.arch-controls { margin-right: auto; }
+
+/* botón para recuperar el minimapa: misma esquina inferior derecha */
+.arch-mm-open {
+  position: absolute;
+  right: var(--margin-outer);
+  bottom: 16px;
+  z-index: 40;
+  display: none;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  box-shadow: 0 14px 28px -20px rgba(20, 19, 17, 0.6);
+}
+.arch-mm-open:hover { background: var(--ink); color: var(--paper); }
+.arch-mm-open:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.is-map-folded .arch-mm-open { display: block; }
+
+@media (max-width: 620px) {
+  .arch-head { justify-content: flex-start; }
+  .arch-mm-open { right: 10px; bottom: 10px; height: 38px; }
+  .arch-minimap { bottom: 10px; width: 108px; }
+}

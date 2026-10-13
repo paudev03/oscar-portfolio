@@ -35,9 +35,7 @@
 
 <main id="main" class="arch">
   <header class="arch-head">
-    <div class="arch-head-text">
-      <h1 class="arch-title">Archive</h1>
-    </div>
+    <h1 class="visually-hidden">Archive</h1>
 
     <div class="arch-controls" id="controls">
       <div class="arch-filter" id="filter">
@@ -76,7 +74,6 @@
       <output id="zoom-val" class="arch-nav-val">100 %</output>
       <button type="button" id="zoom-in" class="arch-nav-btn" aria-label="Ampliar">+</button>
       <button type="button" id="fit" class="arch-nav-btn arch-nav-btn--text">Ver todo</button>
-      <button type="button" id="mm-toggle" class="arch-nav-btn arch-nav-btn--text" aria-controls="minimap" aria-pressed="true">Mapa</button>
     </div>
 
     <aside class="arch-minimap arch-ui" id="minimap" aria-label="Minimapa del archivo">
@@ -85,6 +82,7 @@
       </div>
       <button type="button" class="arch-minimap-fold" id="mm-fold" aria-label="Plegar minimapa">−</button>
     </aside>
+    <button type="button" id="mm-toggle" class="arch-mm-open arch-ui" aria-controls="minimap" aria-pressed="true">Mapa</button>
   </section>
 </main>
 

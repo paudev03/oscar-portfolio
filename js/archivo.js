@@ -573,6 +573,7 @@
   var mmToggle = $("#mm-toggle");
   function showMap(open, remember) {
     minimap.classList.toggle("is-folded", !open);
+    stage.classList.toggle("is-map-folded", !open);
     mmToggle.setAttribute("aria-pressed", String(open));
     if (!remember) return;
     try { sessionStorage.setItem("archivo-map", open ? "1" : "0"); } catch (e) { /* sin storage */ }
