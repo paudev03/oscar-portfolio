@@ -1,0 +1,64 @@
+/* =========================================================
+   Selected Work — OTI dripping-logo section
+   Self-contained: only index.html loads this file.
+   ========================================================= */
+
+.drip {
+  position: relative;
+  height: 300svh;
+}
+.drip-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  pointer-events: none;   /* never intercepts clicks on the page */
+}
+.drip svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.drip-logo {
+  font-family: "Archivo", var(--font-sans);
+  font-weight: 700;
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+  fill: var(--ink);
+}
+.drip-paint path { fill: var(--ink); }
+.drip-paint .drip-gloss { fill: none; stroke: var(--paper); stroke-linecap: round; opacity: 0.16; }
+
+.drip-cue {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(18px, 4svh, 40px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.drip-cue::after {
+  content: "";
+  width: 1px;
+  height: 28px;
+  background: var(--graphite);
+  opacity: 0.6;
+}
+
+/* the first project follows the experiment directly */
+.drip + .work-list { padding-top: 0; }
+
+@media (max-width: 720px) {
+  .drip { height: 240svh; }
+}
+
+/* reduced motion: a still frame, no scroll-bound animation */
+.drip--static { height: 100svh; }
+.drip--static .drip-cue { display: none; }
