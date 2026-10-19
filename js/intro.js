@@ -1,35 +1,56 @@
 /* ==========================================================================
-   OTI intro — Phase 3: ONE drop of paint (preview page only)
+   OTI intro — Phase 3 (v2): paint running down the letters (preview only)
 
-   A single drop is born under the T's bar, near its slanted end, where there
-   is free space beside the stem. Everything is a pure function of p in [0, 1],
-   exactly as it will be when it is wired to the scroll in Phase 4:
+   Feedback on v1: one detached drop looked staged. Real thick paint rarely
+   lets go: it RUNS. So now the paint creeps down from several letters and
+   stays attached, leaving a trail:
 
-     0.00 – 0.16  a bead of paint swells on the underside of the bar
-     0.06 – 0.68  the mass sags: a bulb grows at the end of a stretching neck
-                  (slow at first, heavy, then it speeds up)
-     0.52 – 0.72  the neck thins into a thread
-     0.72 – 0.86  the thread snaps: the upper part recoils into a small bead
-                  that stays on the bar, the lower tail pulls into the bulb
-     0.72 – 1.00  the free drop falls with gravity, stretching as it speeds up
+     - each run starts as a bead on a letter edge, then a bulb forms at the end
+       of a trail that lengthens (slow start, quick middle, slow end as the
+       paint thins out)
+     - the trail is not a straight tube: its width wanders, it leans a little,
+       and some runs leave a swelling where a bead slid past
+     - runs come from different places and start at different moments:
+       the T's bar (two), the T's stem, the O (underside, left, and from the
+       top of its counter, hanging into the hole) and the I
+     - each bulb gets a soft light/shade and the trail a thin highlight, so it
+       reads as wet, thick paint (ivory, same as the letters; colours come in
+       a later phase)
 
-   The preview auto-plays once (p goes 0 -> 1 over 9 s) and can be scrubbed
-   with the slider, forwards and backwards. Nothing here touches the live site.
+   Everything is a pure function of p in [0, 1], exactly as it will be when it
+   is wired to the scroll, so it can be scrubbed both ways. The preview
+   auto-plays once; the slider scrubs; R or Replay restarts. Nothing here
+   touches the live site.
    ========================================================================== */
 (function () {
   "use strict";
 
-  var body = document.getElementById("drop-body");
-  if (!body) return;
-  var clipPath = document.getElementById("drop-clip-path");
-  var shade = document.getElementById("drop-shade");
-  var shine = document.getElementById("drop-shine");
+  var layer = document.getElementById("drops");
+  if (!layer) return;
+  var defs = layer.ownerSVGElement.querySelector("defs");
+
   var slider = document.getElementById("drop-scrub");
   var replay = document.getElementById("drop-replay");
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var NS = "http://www.w3.org/2000/svg";
 
-  var X0 = 845;          // where the drop is born (under the T's bar, right of the stem)
-  var Y0 = 210;          // underside of the bar
+  /* Attach points sit exactly on the ink edge of the approved lettering.
+       x, y   where the run leaves the letter (y = the ink edge at that x)
+       L      how far the head travels (viewBox units)
+       a      neck half-width, r  bulb radius
+       s, d   start and duration in progress (viscosity)
+       lean   sideways wander, pinch  <1 thins mid-trail, >1 leaves a swelling
+       elong  teardrop elongation of the bulb, ph  phase of the small wobbles,
+       bead   (optional) where a small bead of paint sits on the trail         */
+  var RUNS = [
+    { x: 850, y: 210, L: 285, a: 20, r: 30, s: 0.08, d: 0.64, lean: 0.10, pinch: 0.62, elong: 1.45, ph: 0.4, bead: 0.42 },    // T bar, right
+    { x: 336, y: 479, L: 205, a: 19, r: 28, s: 0.20, d: 0.58, lean: -0.07, pinch: 0.66, elong: 1.38, ph: 1.9, bead: 0.6 },   // O, underside
+    { x: 748, y: 480, L: 185, a: 21, r: 30, s: 0.30, d: 0.54, lean: 0.05, pinch: 1.12, elong: 1.5, ph: 3.1 },    // T stem (leaves a swelling)
+    { x: 588, y: 210, L: 140, a: 13, r: 19, s: 0.17, d: 0.60, lean: -0.08, pinch: 0.80, elong: 1.3, ph: 5.0 },   // T bar, left
+    { x: 331, y: 213, L: 108, a: 15, r: 21, s: 0.36, d: 0.50, lean: 0.05, pinch: 0.84, elong: 1.3, ph: 2.4 },    // inside the O, from the top of the counter
+    { x: 1018, y: 480, L: 150, a: 15, r: 22, s: 0.44, d: 0.50, lean: -0.06, pinch: 0.72, elong: 1.35, ph: 4.2, bead: 0.5 }, // I
+    { x: 264, y: 477, L: 96, a: 11, r: 16, s: 0.52, d: 0.44, lean: 0.09, pinch: 0.9, elong: 1.25, ph: 0.9 }      // O, left of the underside
+  ];
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function smooth(a, b, x) {
@@ -38,144 +59,152 @@
   }
   function lerp(a, b, t) { return a + (b - a) * t; }
   function f(n) { return n.toFixed(2); }
+  function el(name, attrs, parent) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
 
-  function draw(p) {
-    if (p <= 0.002) {
-      body.removeAttribute("d");
-      clipPath.removeAttribute("d");
-      shade.setAttribute("visibility", "hidden");
-      shine.setAttribute("visibility", "hidden");
+  /* ---- DOM: per run a body, and a clipped group with shade, shine and gloss ---- */
+  var items = RUNS.map(function (cfg, i) {
+    var body = el("path", { "class": "drop-body" }, layer);
+    var bead = cfg.bead ? el("ellipse", { "class": "drop-body" }, layer) : null;
+    var clipPath = el("path", {}, el("clipPath", { id: "drop-clip-" + i }, defs));
+    var g = el("g", { "clip-path": "url(#drop-clip-" + i + ")", visibility: "hidden" }, layer);
+    var shade = el("ellipse", { fill: "url(#drop-grad)" }, g);
+    var shine = el("ellipse", { fill: "#fff", opacity: "0.5" }, g);
+    var gloss = el("path", { "class": "drop-gloss" }, g);
+    return { cfg: cfg, bead: bead, body: body, clipPath: clipPath, g: g, shade: shade, shine: shine, gloss: gloss };
+  });
+
+  /* ---- one run at progress p ---- */
+  function build(it, p) {
+    var c = it.cfg;
+    var t = clamp((p - c.s) / c.d, 0, 1);
+    var g = smooth(0, 0.16, t);                              // a bead first
+    if (g <= 0.003) {
+      if (it.bead) it.bead.setAttribute("visibility", "hidden");
+      it.body.removeAttribute("d");
+      it.clipPath.removeAttribute("d");
+      it.g.setAttribute("visibility", "hidden");
       return;
     }
+    // speed: slow start, quick middle, slow end (the paint thins out), with a slight stutter
+    var e = smooth(0, 1, t);
+    e += 0.035 * Math.sin(t * 13 + c.ph) * Math.sin(Math.PI * t);
+    e = clamp(e, 0, 1);
 
-    var s1 = smooth(0.0, 0.16, p);                     // bead swells
-    var g = smooth(0.08, 0.68, p);                     // sagging mass
-    var gE = Math.pow(g, 1.35);                        // heavy: slow start
-    var br = smooth(0.52, 0.72, p);                    // neck thins
-    var s = smooth(0.72, 0.86, p);                     // snap + recoil
-    var u = clamp((p - 0.72) / 0.28, 0, 1);            // free fall
+    var a = c.a * (1 - 0.3 * t) * g;                         // neck half-width, thins as it runs
+    var r = c.r * (0.42 + 0.58 * smooth(0.1, 0.7, t)) * g;   // bulb radius
+    var ry = r * (1 + (c.elong - 1) * smooth(0.12, 0.7, t)); // teardrop elongation
+    var fil = a + 2;                                         // fillet into the letter
+    var L = Math.max(0, c.L * e);
 
-    // bulb
-    var R = 9 * s1 + 31 * smooth(0.06, 0.6, p);
-    var ryAtt = R * (1 + 0.36 * g);
-    var ry = u > 0 ? R * (1 + 0.62 * Math.sin(Math.min(1, u * 1.15) * Math.PI / 2)) * (1 - 0.1 * u) : ryAtt;
-    var rx = R * (1 - 0.1 * u);
-    var cyBase = Y0 + 4 + R * 0.9 + 150 * gE;
-    var fall = 640 * u * u;
-    var cy = cyBase + fall;
-    var leanA = 7 * smooth(0.15, 0.7, p);              // the mass leans a little as it sags
-    var bx = X0 + leanA + 6 * u;
+    var yb = c.y;                                            // ink edge
+    var y0 = yb - 7;                                         // start hidden inside the ink
+    var y1 = yb + fil;
+    var cyb = y1 + L;                                        // bulb centre
+    var y2 = Math.max(y1 + 1, cyb - ry * 0.95);              // where the trail meets the bulb
+    var ym = lerp(y1, y2, 0.55);
 
-    // neck / thread
-    var wNeck = (30 - 10 * g) * s1;
-    var wThread = lerp(wNeck * 0.62, 1.4, br);              // the waist where it will snap
-    var wRoot = lerp(wNeck, 15, s);
-    var fil = wRoot * 1.0 + 2;                         // fillet into the bar
-    var yPinch = Math.max(Y0 + fil + 6, lerp(Y0 + fil + 6, cyBase - ryAtt, 0.5));   // waist height: mid-neck
+    var x0 = c.x;
+    var lean = c.lean * Math.min(1, L / 140) * 34;           // sideways drift at the head
+    var xm = x0 + lean * 0.3 + Math.sin(ym * 0.045 + c.ph) * 1.6 * Math.min(1, L / 90);
+    var x1 = x0 + lean;
+    var wTop = a * 1.35;
+    var wMid = a * c.pinch * (1 + 0.1 * Math.sin(c.ph * 3 + t * 6));
+    var wEnd = a * 0.95;
+    var dy1 = (ym - y1) * 0.55, dy2 = (y2 - ym) * 0.55;
+    var k = 0.552;
 
-    // upper part: neck from the bar down to a tip that recoils after the snap
-    var yU = lerp(yPinch, Y0 + 14, s);
-    var wUt = lerp(wThread, 12, s);
-    var fracU = clamp((yU - Y0) / Math.max(1, yPinch - Y0), 0, 1);
-    var xU = X0 + leanA * fracU;
+    var d =
+      "M" + f(x0 - wTop - fil) + "," + f(y0) +
+      "C" + f(x0 - wTop - fil * 0.35) + "," + f(y0) + " " + f(x0 - wTop) + "," + f(yb - fil * 0.2) + " " + f(x0 - wTop) + "," + f(y1) +
+      "C" + f(x0 - wTop) + "," + f(y1 + dy1) + " " + f(xm - wMid) + "," + f(ym - dy1) + " " + f(xm - wMid) + "," + f(ym) +
+      "C" + f(xm - wMid) + "," + f(ym + dy2) + " " + f(x1 - wEnd) + "," + f(y2 - dy2) + " " + f(x1 - wEnd) + "," + f(y2) +
+      "C" + f(x1 - wEnd) + "," + f(y2 + ry * 0.45) + " " + f(x1 - r) + "," + f(cyb - ry * 0.35) + " " + f(x1 - r) + "," + f(cyb) +
+      "C" + f(x1 - r) + "," + f(cyb + ry * k) + " " + f(x1 - r * k) + "," + f(cyb + ry) + " " + f(x1) + "," + f(cyb + ry) +
+      "C" + f(x1 + r * k) + "," + f(cyb + ry) + " " + f(x1 + r) + "," + f(cyb + ry * k) + " " + f(x1 + r) + "," + f(cyb) +
+      "C" + f(x1 + r) + "," + f(cyb - ry * 0.35) + " " + f(x1 + wEnd) + "," + f(y2 + ry * 0.45) + " " + f(x1 + wEnd) + "," + f(y2) +
+      "C" + f(x1 + wEnd) + "," + f(y2 - dy2) + " " + f(xm + wMid) + "," + f(ym + dy2) + " " + f(xm + wMid) + "," + f(ym) +
+      "C" + f(xm + wMid) + "," + f(ym - dy1) + " " + f(x0 + wTop) + "," + f(y1 + dy1) + " " + f(x0 + wTop) + "," + f(y1) +
+      "C" + f(x0 + wTop) + "," + f(yb - fil * 0.2) + " " + f(x0 + wTop + fil * 0.35) + "," + f(y0) + " " + f(x0 + wTop + fil) + "," + f(y0) +
+      "Z";
+    it.body.setAttribute("d", d);
+    it.clipPath.setAttribute("d", d);
+    it.g.setAttribute("visibility", "visible");
 
-    var dU = Math.min(Y0 + fil, yU - 3);
-    var d = "";
-    if (wNeck > 0.3) {
-      var dy = Math.max(1, (yU - dU)) * 0.5;
-      d +=
-        "M" + f(X0 - wRoot - fil) + "," + (Y0 - 6) +
-        "C" + f(X0 - wRoot - fil * 0.3) + "," + (Y0 - 6) + " " + f(X0 - wRoot) + "," + f(Y0 - fil * 0.2) + " " + f(X0 - wRoot) + "," + f(dU) +
-        "C" + f(X0 - wRoot) + "," + f(dU + dy) + " " + f(xU - wUt) + "," + f(yU - dy) + " " + f(xU - wUt) + "," + f(yU) +
-        "A" + f(wUt) + " " + f(wUt) + " 0 0 0 " + f(xU + wUt) + " " + f(yU) +
-        "C" + f(xU + wUt) + "," + f(yU - dy) + " " + f(X0 + wRoot) + "," + f(dU + dy) + " " + f(X0 + wRoot) + "," + f(dU) +
-        "C" + f(X0 + wRoot) + "," + f(Y0 - fil * 0.2) + " " + f(X0 + wRoot + fil * 0.3) + "," + (Y0 - 6) + " " + f(X0 + wRoot + fil) + "," + (Y0 - 6) +
-        "Z";
+    // light and shade on the bulb, highlight along the trail
+    it.shade.setAttribute("cx", f(x1)); it.shade.setAttribute("cy", f(cyb));
+    it.shade.setAttribute("rx", f(r * 1.02)); it.shade.setAttribute("ry", f(ry * 1.02));
+    var sx = x1 - r * 0.36, sy = cyb - ry * 0.24;
+    it.shine.setAttribute("cx", f(sx)); it.shine.setAttribute("cy", f(sy));
+    it.shine.setAttribute("rx", f(Math.max(0.1, r * 0.17))); it.shine.setAttribute("ry", f(Math.max(0.1, ry * 0.3)));
+    it.shine.setAttribute("transform", "rotate(18 " + f(sx) + " " + f(sy) + ")");
+    if (it.bead) {
+      var bt = smooth(0.3, 0.5, t);
+      if (bt > 0.01) {
+        var fr = c.bead;
+        var by = y1 + L * fr * 0.92;
+        var bxp = x0 + lean * fr * 0.55 + Math.sin(by * 0.045 + c.ph) * 1.6;
+        var br = wMid * (1.5 + 0.2 * Math.sin(c.ph)) * bt;
+        it.bead.setAttribute("cx", f(bxp)); it.bead.setAttribute("cy", f(by));
+        it.bead.setAttribute("rx", f(br)); it.bead.setAttribute("ry", f(br * 1.35));
+        it.bead.setAttribute("visibility", "visible");
+      } else {
+        it.bead.setAttribute("visibility", "hidden");
+      }
     }
-
-    // lower part: bulb with a tail that pulls into it after the snap
-    var yL = lerp(yPinch - 6 + fall, cy - ry * 0.97, s);
-    var fracL = clamp((yL - Y0) / Math.max(1, yPinch - Y0), 0, 1);
-    var tx = lerp(X0 + leanA * fracL, bx, s);
-    var wL = lerp(wThread, 0.05 * R + 1.5, s);
-    var t = Math.max(2, cy - yL);
-    var c2 = lerp(Math.min(t, ry * 1.2) * 0.5, ry * 0.5, s);
-    var c1x = lerp(wL, R * 0.5, s);                    // neck: straight down; free drop: convex teardrop
-    if (R > 0.8) {
-      d +=
-        "M" + f(tx - wL) + "," + f(yL) +
-        "C" + f(tx - c1x) + "," + f(yL + t * 0.5) + " " + f(bx - rx) + "," + f(cy - c2) + " " + f(bx - rx) + "," + f(cy) +
-        "A" + f(rx) + " " + f(ry) + " 0 0 0 " + f(bx + rx) + " " + f(cy) +
-        "C" + f(bx + rx) + "," + f(cy - c2) + " " + f(tx + c1x) + "," + f(yL + t * 0.5) + " " + f(tx + wL) + "," + f(yL) +
-        "A" + f(wL) + " " + f(wL) + " 0 0 0 " + f(tx - wL) + " " + f(yL) +
-        "Z";
-    }
-
-    body.setAttribute("d", d);
-    clipPath.setAttribute("d", d);
-
-    // volume: a soft light/shade on the bulb only, clipped to the paint shape
-    if (R > 6) {
-      shade.setAttribute("visibility", "visible");
-      shade.setAttribute("cx", f(bx));
-      shade.setAttribute("cy", f(cy));
-      shade.setAttribute("rx", f(rx));
-      shade.setAttribute("ry", f(ry));
-      shine.setAttribute("visibility", "visible");
-      shine.setAttribute("cx", f(bx - rx * 0.36));
-      shine.setAttribute("cy", f(cy - ry * 0.24));
-      shine.setAttribute("rx", f(rx * 0.17));
-      shine.setAttribute("ry", f(ry * 0.3));
-      shine.setAttribute("transform", "rotate(18 " + f(bx - rx * 0.36) + " " + f(cy - ry * 0.24) + ")");
+    if (L > c.a * 2.5) {
+      var gx0 = x0 - wTop * 0.42, gx1 = x1 - r * 0.4;
+      it.gloss.setAttribute("d", "M" + f(gx0) + "," + f(y1 + fil) +
+        "C" + f(gx0) + "," + f(ym) + " " + f(gx1) + "," + f(ym + dy2) + " " + f(gx1) + "," + f(cyb));
+      it.gloss.setAttribute("stroke-width", f(Math.max(1.2, a * 0.4)));
     } else {
-      shade.setAttribute("visibility", "hidden");
-      shine.setAttribute("visibility", "hidden");
+      it.gloss.removeAttribute("d");
     }
+  }
+
+  function draw(p) {
+    for (var i = 0; i < items.length; i++) build(items[i], p);
   }
 
   /* ---- preview driver: auto-play once, slider for scrubbing both ways ---- */
-  var p = 0, raf = 0, start = 0, from = 0;
-  var DURATION = 9000;
+  var raf = 0, start = 0;
+  var DURATION = 13000;
 
   function set(v) {
-    p = clamp(v, 0, 1);
+    var p = clamp(v, 0, 1);
     draw(p);
     if (slider) slider.value = String(Math.round(p * 1000));
   }
-
   function next(fn) {
     var done = false;
     var run = function (t) { if (done) return; done = true; fn(typeof t === "number" ? t : performance.now()); };
     window.requestAnimationFrame(run);
     setTimeout(run, 60);
   }
-
   function stop() { raf++; }
-
   function play(fromP) {
     stop();
     var id = raf;
-    from = fromP || 0;
     start = 0;
     var step = function (now) {
       if (id !== raf) return;
-      if (!start) start = now - from * DURATION;
+      if (!start) start = now - (fromP || 0) * DURATION;
       var v = clamp((now - start) / DURATION, 0, 1);
       set(v);
       if (v < 1) next(step);
     };
-    set(from);
+    set(fromP || 0);
     next(step);
   }
 
-  if (slider) {
-    slider.addEventListener("input", function () { stop(); set(Number(slider.value) / 1000); });
-  }
+  if (slider) slider.addEventListener("input", function () { stop(); set(Number(slider.value) / 1000); });
   if (replay) replay.addEventListener("click", function () { play(0); });
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "r" || e.key === "R") play(0);
-  });
+  document.addEventListener("keydown", function (e) { if (e.key === "r" || e.key === "R") play(0); });
 
-  if (reduce) { set(0.6); }
+  if (reduce) { set(0.7); }
   else { set(0); setTimeout(function () { play(0); }, 900); }
 })();

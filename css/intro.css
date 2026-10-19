@@ -39,7 +39,8 @@ html, body {
   .intro-mark { width: 84vw; margin-top: -3svh; }
 }
 
-.drop #drop-body { fill: var(--intro-ink); }
+.drop-body { fill: var(--intro-ink); }
+.drop-gloss { fill: none; stroke: #ffffff; stroke-linecap: round; opacity: 0.32; }
 
 /* the page never scrolls vertically: the falling drop just leaves the view */
 .intro { overflow: hidden; }
