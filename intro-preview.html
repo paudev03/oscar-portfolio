@@ -6,24 +6,37 @@
 <meta name="robots" content="noindex, nofollow">
 <title>OTI — lettering preview</title>
 <meta name="theme-color" content="#0B0B0B">
-<link rel="stylesheet" href="css/intro.css?v=20261101">
+<link rel="stylesheet" href="css/intro.css?v=20261106">
 </head>
 <body>
 <!--
-  PHASE 2 — static prototype of the OTI intro lettering.
+  PHASE 3 — one drop of paint on the approved OTI lettering.
   Not linked from the site, not in the sitemap. The live hero is unchanged.
 
-  The lettering is drawn here, as original vector shapes (no font, no raster):
-    O  wide ring: a rounded outer form with an upright, slightly off-centre counter
-    T  heavy bar with a slanted right cut, and a straight stem
-    I  flat-topped bar, lower right corner cut at the same slope as the T's bar
+  The lettering (approved in Phase 2) is unchanged:
+    O  wide ring, upright counter nudged right
+    T  heavy bar with a slanted right cut, straight stem
+    I  flat-topped bar, lower right corner cut on the same slope
   Cap height 360, stroke 120. viewBox 1200 x 600, letters spaced 48 apart.
+
+  The drop (js/intro.js) is born under the T's bar, beside the stem, and is a
+  pure function of progress p, so it can be scrubbed with the slider.
 -->
 <main class="intro" id="main">
   <svg class="intro-mark" viewBox="0 0 1200 600" role="img" aria-labelledby="intro-title" xmlns="http://www.w3.org/2000/svg">
     <title id="intro-title">OTI</title>
 
-    <!-- O : outer rounded form minus an upright counter (even-odd), counter nudged right by 10, so the left stroke (130) is heavier than the right (110) -->
+    <defs>
+      <clipPath id="drop-clip"><path id="drop-clip-path"/></clipPath>
+      <!-- volume: light on the upper left, shade on the lower right, kept subtle -->
+      <radialGradient id="drop-grad" cx="0.38" cy="0.3" r="0.8">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+        <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+        <stop offset="1" stop-color="#3a372f" stop-opacity="0.42"/>
+      </radialGradient>
+    </defs>
+
+    <!-- O -->
     <path id="letter-o" fill-rule="evenodd" d="
       M 297 120
       H 317
@@ -36,7 +49,7 @@
       A 70 90 0 1 0 247 300
       Z"/>
 
-    <!-- T : bar (right end cut on a slant) + stem -->
+    <!-- T -->
     <path id="letter-t" d="
       M 545 120
       H 925
@@ -49,8 +62,7 @@
       H 675
       Z"/>
 
-    <!-- I : flat-topped bar (so it can never read as a 1 or an l); its lower right corner
-         is cut on the same slope as the T's bar (20 across, 90 down) -->
+    <!-- I -->
     <path id="letter-i" d="
       M 973 120
       H 1083
@@ -58,7 +70,23 @@
       L 1063 480
       H 973
       Z"/>
+
+    <!-- the drop: same ivory as the letters, drawn in its own layer -->
+    <g class="drop" aria-hidden="true">
+      <path id="drop-body"/>
+      <g clip-path="url(#drop-clip)">
+        <ellipse id="drop-shade" fill="url(#drop-grad)" visibility="hidden"/>
+        <ellipse id="drop-shine" fill="#ffffff" opacity="0.55" visibility="hidden"/>
+      </g>
+    </g>
   </svg>
+
+  <!-- preview-only controls: scrub the drop (both ways) or replay it. R also replays. -->
+  <div class="intro-ctl" role="group" aria-label="Preview controls">
+    <button type="button" id="drop-replay">Replay</button>
+    <input type="range" id="drop-scrub" min="0" max="1000" value="0" aria-label="Drop progress">
+  </div>
 </main>
+<script src="js/intro.js?v=20261106"></script>
 </body>
 </html>
