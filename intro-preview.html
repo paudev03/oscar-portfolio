@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>OTI — lettering preview</title>
+<meta name="theme-color" content="#0B0B0B">
+<link rel="stylesheet" href="css/intro.css?v=20261101">
+</head>
+<body>
+<!--
+  PHASE 2 — static prototype of the OTI intro lettering.
+  Not linked from the site, not in the sitemap. The live hero is unchanged.
+
+  The lettering is drawn here, as original vector shapes (no font, no raster):
+    O  wide ring: a rounded outer form with an upright, slightly off-centre counter
+    T  heavy bar with a slanted right cut, and a straight stem
+    I  flat-topped bar, lower right corner cut at the same slope as the T's bar
+  Cap height 360, stroke 120. viewBox 1200 x 600, letters spaced 48 apart.
+-->
+<main class="intro" id="main">
+  <svg class="intro-mark" viewBox="0 0 1200 600" role="img" aria-labelledby="intro-title" xmlns="http://www.w3.org/2000/svg">
+    <title id="intro-title">OTI</title>
+
+    <!-- O : outer rounded form minus an upright counter (even-odd), counter nudged right by 10, so the left stroke (130) is heavier than the right (110) -->
+    <path id="letter-o" fill-rule="evenodd" d="
+      M 297 120
+      H 317
+      A 180 180 0 0 1 317 480
+      H 297
+      A 180 180 0 0 1 297 120
+      Z
+      M 247 300
+      A 70 90 0 1 0 387 300
+      A 70 90 0 1 0 247 300
+      Z"/>
+
+    <!-- T : bar (right end cut on a slant) + stem -->
+    <path id="letter-t" d="
+      M 545 120
+      H 925
+      L 905 210
+      H 545
+      Z
+      M 675 200
+      H 795
+      V 480
+      H 675
+      Z"/>
+
+    <!-- I : flat-topped bar (so it can never read as a 1 or an l); its lower right corner
+         is cut on the same slope as the T's bar (20 across, 90 down) -->
+    <path id="letter-i" d="
+      M 973 120
+      H 1083
+      V 390
+      L 1063 480
+      H 973
+      Z"/>
+  </svg>
+</main>
+</body>
+</html>
