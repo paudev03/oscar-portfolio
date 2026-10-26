@@ -1,0 +1,98 @@
+/* =========================================================
+   Cover (index.html): a portrait, with ARCHIVE hidden underneath it.
+   The portrait is a plain <img>; js/portrait.js punches a soft, localised hole
+   in it (CSS mask) over the head, and the real link underneath shows through.
+   One screen, no scrolling, no menu.
+   ========================================================= */
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.visually-hidden-h {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.portrait {
+  --P: min(100vw, 100svh);          /* the portrait is a square, as large as the screen allows */
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
+
+.stage {
+  position: relative;
+  width: var(--P);
+  height: var(--P);
+  touch-action: none;                /* the cover never scrolls; finger moves reveal instead */
+}
+
+/* layer 0: the real link, hidden under the image until revealed */
+.archive {
+  position: absolute;
+  z-index: 0;
+  left: 51.05%;
+  top: 13.75%;
+  transform: translate(-50%, -50%);
+  padding: calc(var(--P) * 0.02) calc(var(--P) * 0.03);
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 500;
+  font-size: calc(var(--P) * 0.046);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: #000;
+  text-decoration: none;
+  pointer-events: none;              /* not clickable while it is hidden */
+}
+.archive::after {                    /* a thin line that draws in once the word is revealed */
+  content: "";
+  position: absolute;
+  left: calc(var(--P) * 0.03); right: calc(var(--P) * 0.03 + 0.16em);
+  bottom: calc(var(--P) * 0.012);
+  height: 2px;
+  background: #000;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 320ms ease;
+}
+.archive:hover::after,
+.archive:focus-visible::after { transform: scaleX(1); }
+.archive:focus-visible { outline: 2px solid #000; outline-offset: 4px; }
+.portrait.is-open .archive { pointer-events: auto; }
+
+/* layer 1: the portrait. It never receives the pointer: the link underneath does, once it is open. */
+.face {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* without JavaScript the link simply sits under the portrait, as a plain link */
+.nojs-link {
+  position: fixed;
+  left: 0; right: 0; bottom: 18px;
+  text-align: center;
+  font: 500 13px/1 "Inter", system-ui, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.nojs-link a { color: #000; }
