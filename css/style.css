@@ -191,7 +191,7 @@ main { display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 17px var(--margin-outer);
+  padding: 15px var(--margin-outer);
   /* fondo opaco y continuo: sin desenfoque, para que no se fragmente en teselas al pasar el cursor */
   background: var(--header-bg);
   border-bottom: 1px solid transparent;
@@ -203,14 +203,15 @@ main { display: block; }
 }
 
 .wordmark {
-  font-family: "Archivo", var(--font-sans);
-  font-weight: 700;
-  font-stretch: 125%;
-  font-size: 23px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  text-transform: none;
+  display: block;
+  line-height: 0;
   color: var(--header-text);
+}
+.wordmark svg {
+  display: block;
+  height: 28px;
+  width: auto;
+  fill: currentColor;
 }
 
 .wordmark:hover { opacity: 0.7; }

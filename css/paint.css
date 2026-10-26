@@ -36,21 +36,18 @@
 }
 .is-live .paint-fallback { display: none; }
 
-/* wordmark text: the visible logo when the canvas is not running, screen-reader label otherwise */
+/* the official OTI logo: the visible logo when the canvas is not running, a screen-reader label otherwise */
 .paint-logo {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  font-family: "Archivo", var(--font-sans);
-  font-weight: 700;
-  font-stretch: 125%;
-  font-size: clamp(64px, 15vw, 210px);
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  -webkit-text-stroke: 0.04em var(--paper);
+  left: 50%; top: 50%;
+  width: auto;
+  height: min(42svh, 340px);
+  transform: translate(-50%, -50%);
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 14px;
   paint-order: stroke fill;
+  stroke-linejoin: round;
   pointer-events: none;
 }
 .is-live .paint-logo {
@@ -58,7 +55,6 @@
   width: 1px; height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 @media (max-width: 720px) {
