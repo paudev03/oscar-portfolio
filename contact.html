@@ -8,7 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261413">
+<link rel="stylesheet" href="css/style.css?v=20261414">
+<link rel="stylesheet" href="css/contact.css?v=20261415">
+<script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -31,13 +33,41 @@
   <a href="contact.html">Contact</a>
 </nav>
 
-<main id="main" class="contact">
-  <h1 class="contact-title">Contact.</h1>
-  <p class="contact-line">For anything worth discussing.</p>
-  <a class="contact-email" href="mailto:hola@oscardiseno.com">hola@oscardiseno.com</a>
-  <p class="contact-sign" aria-hidden="true">OTI<sup>&reg;</sup></p>
+<main id="main" class="mouth-page">
+  <h1 class="visually-hidden">Contact</h1>
+
+  <!-- The mouth is the portrait's own mouth (assets/contact/mouth.webp, cropped from the cover).
+       js/contact.js draws it on the canvas and parts the lips; nothing else in the photo moves. -->
+  <div class="mouth" id="mouth">
+    <img class="mouth-still" src="assets/contact/mouth.webp" width="850" height="290" alt="A closed mouth">
+    <canvas class="mouth-canvas" id="mouth-canvas" aria-hidden="true"></canvas>
+  </div>
+
+  <!-- Everything the mouth says. They are real elements: js/contact.js places them and lets them out
+       one by one. The first ones (data-burst) come out when the mouth opens; the rest are said now and then.
+       data-keep = stays while the mouth is open; the others fade away. To add a word, add an <li>.
+       Instagram: no real profile is configured in the project yet; when there is one, add
+       <li class="w w--m" data-burst><a href="PROFILE_URL" rel="noopener" target="_blank">Instagram</a></li> -->
+  <ul class="words" id="words">
+    <li class="w w--l" data-burst aria-hidden="true">hello</li>
+    <li class="w w--xl" data-burst data-keep>Got something to say?</li>
+    <li class="w w--mail" data-burst data-keep><a href="mailto:hola@oscardiseno.com"><span>hola@oscardiseno.com</span></a></li>
+    <li class="w w--blk w--red" data-burst aria-hidden="true">@</li>
+    <li class="w w--m" data-burst data-hold="6500">Words come out.</li>
+    <li class="w w--s" data-burst aria-hidden="true">oti&reg;</li>
+
+    <li class="w w--l" aria-hidden="true">hi</li>
+    <li class="w w--m">Say something.</li>
+    <li class="w w--s w--wrap">Every conversation starts somewhere.</li>
+    <li class="w w--blk" aria-hidden="true">ah</li>
+    <li class="w w--l w--red" aria-hidden="true">&hellip;</li>
+    <li class="w w--s" aria-hidden="true">say it</li>
+    <li class="w w--l" aria-hidden="true">mm</li>
+    <li class="w w--s w--red" aria-hidden="true">&mdash;</li>
+  </ul>
 </main>
 
-<script src="js/main.js?v=20261412"></script>
+<script src="js/main.js?v=20261414"></script>
+<script src="js/contact.js?v=20261417"></script>
 </body>
 </html>

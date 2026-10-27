@@ -1,0 +1,120 @@
+/* =========================================================
+   Contact — "The mouth speaks".
+   A large mouth (the portrait's own, cropped) sits in a lot of empty space.
+   js/contact.js parts its lips and lets words out. The words are real list
+   items (.w); the mail link is a real mailto: link.
+   ========================================================= */
+
+:root {
+  --accent: #d9475a;     /* the red of the logo painted on the cover */
+}
+
+.mouth-page {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+/* ---------- the mouth ---------- */
+
+.mouth {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: min(66vw, 840px);
+  transform: translate(-50%, -50%);
+  cursor: default;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mouth::before {            /* a little more room to enter the mouth with the cursor */
+  content: "";
+  position: absolute;
+  inset: -22% -8%;
+}
+.mouth-still,
+.mouth-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.js .mouth-still { display: none; }
+.mouth-canvas { display: none; }
+.js .mouth-canvas { display: block; }
+
+/* ---------- the words ---------- */
+
+.words {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.w {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  opacity: 0;
+  white-space: nowrap;
+  color: var(--ink);
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+.w-in {
+  display: block;
+  animation: w-drift var(--dur, 7s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+@keyframes w-drift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to   { transform: translate(var(--dx, 3px), var(--dy, -4px)) rotate(var(--dr, 0.6deg)); }
+}
+
+.w--xl { font-family: var(--font-serif); font-style: italic; font-size: clamp(28px, 5.4vw, 76px); line-height: 1; letter-spacing: -0.025em; }
+.w--l  { font-family: var(--font-serif); font-style: italic; font-size: clamp(30px, 4vw, 56px); line-height: 1; letter-spacing: -0.02em; }
+.w--m  { font-family: var(--font-serif); font-size: clamp(20px, 2.5vw, 32px); line-height: 1.1; letter-spacing: -0.01em; }
+.w--s  { font-family: var(--font-sans); font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--graphite); }
+.w--blk { font-family: "Archivo", var(--font-sans); font-weight: 700; font-stretch: 125%; text-transform: uppercase; font-size: clamp(26px, 3.6vw, 52px); line-height: 1; letter-spacing: -0.04em; }
+.w--red { color: var(--accent); }
+.w--wrap { white-space: normal; max-width: min(300px, 70vw); text-align: center; line-height: 1.5; }
+
+.w--mail { font-family: var(--font-sans); font-size: clamp(15px, 1.5vw, 19px); font-weight: 500; letter-spacing: 0.01em; }
+.w--mail a {
+  display: block;
+  padding: 10px 14px;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  background-clip: padding-box;
+  pointer-events: none;                /* only once the word has come out */
+}
+.w--mail a > span { border-bottom: 1px solid var(--ink); padding-bottom: 3px; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.w--mail.is-live a { pointer-events: auto; }
+.w--mail a:hover > span,
+.w--mail a:focus-visible > span { color: var(--accent); border-color: var(--accent); }
+.w--mail a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* reduced motion: the words simply appear, without travelling */
+.w.is-on { opacity: 1; transition: opacity 240ms var(--ease); }
+.w.is-on .w-in { animation: none; }
+
+/* ---------- without JavaScript: the mouth and the words, stacked ---------- */
+
+html:not(.js) .mouth { position: relative; left: auto; top: auto; margin: 140px auto 40px; transform: none; }
+html:not(.js) .words { position: static; padding: 0 var(--margin-outer) 80px; text-align: center; }
+html:not(.js) .w { position: static; display: block; opacity: 1; margin: 12px 0; transform: none; }
+html:not(.js) .w--mail a { pointer-events: auto; display: inline-block; }
+html:not(.js) .w--wrap { margin-left: auto; margin-right: auto; }
+
+@media (max-width: 720px) {
+  .mouth { width: 88vw; top: 54%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .w-in { animation: none; }
+}
