@@ -1,383 +1,399 @@
 /* ==========================================================================
-   Contact — the mouth speaks
+   Contact — a flat creature breaks through the page
 
-   The mouth is the portrait's own mouth, drawn on a canvas in thin vertical
-   strips. Opening it moves the upper strips up and the lower strips down by an
-   amount that is largest in the middle and zero at the corners, so the lips
-   part into a lens and the dark inside shows between them. Nothing else in the
-   photo moves or is deformed.
+   No 3D and no WebGL: a vector drawing (SVG) and a few transforms, so it is light.
 
-   While the mouth is open it says words: real <li> elements (.w) that leave
-   the mouth one by one, drift to a free spot around it and, if they are not
-   marked data-keep, fade away. The mail link is an ordinary mailto: link.
+   The creature is built here, from a few irregular shapes: a dark mass, two rolls of lip,
+   a ring of uneven teeth, and a throat made of layers that get darker and smaller. It sits
+   above the words in the stacking order, so whatever is drawn in towards its mouth goes
+   behind it for real. Depth is suggested the old way: the throat layers shift by different
+   amounts when the cursor moves (parallax), and the mouth swells when the cursor is near.
 
-   Cursor: entering the mouth opens it; leaving it (and not going on to a word)
-   closes it after a short grace period, and every word goes back in.
-   Touch: tap the mouth to open it, tap it again or tap elsewhere to close it.
-   Keyboard: focusing the mail link opens the mouth.
-   Reduced motion: the lips part and the words appear, without travelling.
+   The words are real text split into letters. Near the creature each letter is pulled
+   towards the mouth, stretched along the pull and curled, with a falloff by distance.
+   Hovering or focusing a link calms the pull over that word and brings it in front.
+
+   Everything eases with inertia and stops by itself when nothing moves.
+   Reduced motion: one still frame. Touch: a finger drag is the cursor.
    ========================================================================== */
 (function () {
   "use strict";
 
-  var page = document.querySelector(".mouth-page");
-  if (!page) return;
-  var mouth = page.querySelector(".mouth");
-  var cv = page.querySelector(".mouth-canvas");
-  var list = page.querySelector(".words");
-  if (!mouth || !cv || !list || !cv.getContext) return;
-  var ctx = cv.getContext("2d");
-
+  var page = document.querySelector(".ct-page");
+  var svg = page && page.querySelector(".ct-creature");
+  if (!page || !svg) return;
+  var wordEls = [].slice.call(page.querySelectorAll(".ct-word"));
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var touchOnly = window.matchMedia("(hover: none)").matches;
+  var NS = "http://www.w3.org/2000/svg";
 
-  /* ---- the photo: 850 x 290, the lips meet along y = SEAM ---- */
-  var IMG_W = 850, IMG_H = 290, SEAM = 120;
-  var CX = 425, HALF = 372;            // the lips run from CX - HALF to CX + HALF
-  var G = 56;                          // the widest opening, in photo pixels
-  var STRIP = 2;
-  var img = new Image();
-  var ready = false;
-  var k = 1, dpr = 1;                  // css px per photo px, device pixel ratio
+  /* ================================================================ drawing */
+  function rnd(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+  function f(n) { return n.toFixed(3); }
 
-  function size() {
-    var w = mouth.clientWidth;
-    if (!w) return;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    k = w / IMG_W;
-    var h = (IMG_H + G) * k;
-    cv.style.height = h + "px";
-    cv.width = Math.round(w * dpr);
-    cv.height = Math.round(h * dpr);
+  /* the unit-radius opening: lobes, a pinched side. Shared by the lips, the throat and the teeth. */
+  function rim(th) {
+    return 1 + 0.22 * Math.sin(3 * th + 1.3) + 0.14 * Math.sin(5 * th + 2.1) + 0.09 * Math.sin(2 * th + 0.4) + 0.05 * Math.sin(7 * th + 0.5);
   }
 
-  function profile(x) {                // 0 at the corners, 1 in the middle
-    var u = (x - CX) / HALF;
-    return u > -1 && u < 1 ? Math.pow(1 - u * u, 1.25) : 0;
+  function closedPath(pts) {                         // a smooth closed curve through the points
+    var n = pts.length, d = "M" + f(pts[0][0]) + " " + f(pts[0][1]);
+    for (var i = 0; i < n; i++) {
+      var p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      d += " C" + f(p1[0] + (p2[0] - p0[0]) / 6) + " " + f(p1[1] + (p2[1] - p0[1]) / 6) + " " +
+           f(p2[0] - (p3[0] - p1[0]) / 6) + " " + f(p2[1] - (p3[1] - p1[1]) / 6) + " " + f(p2[0]) + " " + f(p2[1]);
+    }
+    return d + "Z";
+  }
+  function polar(fn, n, scale, ox, oy, sx, sy) {
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var th = i / n * Math.PI * 2, r = fn(th) * scale;
+      pts.push([ox + Math.cos(th) * r * sx, oy + Math.sin(th) * r * sy]);
+    }
+    return pts;
   }
 
-  function draw(g) {
-    if (!ready) return;
-    var s = cv.width / IMG_W;          // canvas px per photo px
-    var oy = (G / 2) * s;              // room above the photo for the upper lip to rise
-    var gap = G * g;
-    var ySeam = oy + SEAM * s;
-    ctx.clearRect(0, 0, cv.width, cv.height);
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
 
-    if (gap > 0.6) {
-      // the inside of the mouth, between the two lips
-      var gr = ctx.createLinearGradient(0, ySeam - (G / 2) * s, 0, ySeam + (G / 2) * s);
-      gr.addColorStop(0, "#0a0606");
-      gr.addColorStop(0.5, "#150a0c");
-      gr.addColorStop(0.82, "#3a0e15");
-      gr.addColorStop(1, "#5e1822");
-      ctx.fillStyle = gr;
-      ctx.beginPath();
-      var x, p, h, e = Math.min(1.5, gap * s / 2);   // the overlap with the lips fades with the opening
-      ctx.moveTo(0, ySeam);
-      for (x = 0; x <= IMG_W; x += STRIP) {
-        p = profile(x + STRIP / 2);
-        h = gap * p * s / 2;
-        ctx.lineTo(x * s, ySeam - (p > 0 ? h + e : 0));
+  var parts = null;      // the groups the animation moves
+
+  function buildCreature() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var R = rnd(7);
+
+    var root = el("g", { "class": "ct-root" }, svg);                  // placed and scaled to the page: units are mouth radii
+    var shadow = el("g", { "class": "ct-shadow" }, root);
+    var breathe = el("g", { "class": "ct-breathe" }, root);
+    var body = el("g", {}, breathe);
+
+    /* the dark mass, uneven, tilted */
+    var blobFn = function (th) { return 2.15 * (1 + 0.16 * Math.sin(3 * th + 0.7) + 0.11 * Math.sin(5 * th + 2.0) + 0.07 * Math.sin(7 * th + 1.1) + 0.04 * Math.sin(11 * th)); };
+    var blob = closedPath(polar(blobFn, 30, 1, 0, 0, 1.08, 0.92));
+    el("path", { d: blob, fill: "rgba(20,18,16,0.04)", transform: "translate(0.22 0.34)" }, shadow);
+    el("path", { d: blob, fill: "rgba(20,18,16,0.045)", transform: "translate(0.15 0.24)" }, shadow);
+    el("path", { d: blob, fill: "rgba(20,18,16,0.06)", transform: "translate(0.08 0.13)" }, shadow);
+    el("path", { d: blob, fill: "#0d0c0b" }, body);
+    var defs = el("defs", {}, svg);
+    var clip = el("clipPath", { id: "ct-blob" }, defs);
+    el("path", { d: blob }, clip);
+
+    /* folds in the skin, radiating from the opening */
+    var folds = el("g", { fill: "none", stroke: "#26221f", "stroke-linecap": "round", "clip-path": "url(#ct-blob)" }, body);
+    for (var i = 0; i < 26; i++) {
+      var a = i / 26 * Math.PI * 2 + (R() - 0.5) * 0.18;
+      var r0 = 1.55 + R() * 0.12, r1 = r0 + 0.25 + R() * 0.40, bow = (R() - 0.5) * 0.5;
+      var am = a + bow * 0.18;
+      el("path", {
+        d: "M" + f(Math.cos(a) * r0 * 1.08) + " " + f(Math.sin(a) * r0 * 0.92) +
+           " Q" + f(Math.cos(am) * (r0 + r1) / 2 * 1.08) + " " + f(Math.sin(am) * (r0 + r1) / 2 * 0.92) +
+           " " + f(Math.cos(a + bow * 0.3) * r1 * 1.08) + " " + f(Math.sin(a + bow * 0.3) * r1 * 0.92),
+        "stroke-width": (0.012 + R() * 0.018).toFixed(3)
+      }, folds);
+    }
+
+    /* the mouth: lips, throat, teeth. This group swells when the cursor is near */
+    var mouth = el("g", {}, body);
+
+    var lipFn = function (k, jit) { return function (th) { return rim(th) * k * (1 + jit * Math.sin(4 * th + 0.5) + jit * 0.6 * Math.sin(7 * th)); }; };
+    el("path", { d: closedPath(polar(lipFn(1.52, 0.07), 36, 1, 0, 0, 1.06, 0.94)), fill: "#2a0a0c" }, mouth);   // outer roll
+    el("path", { d: closedPath(polar(lipFn(1.28, 0.05), 36, 1, 0, 0, 1.04, 0.96)), fill: "#5b0f15" }, mouth);   // main lip
+    el("path", { d: closedPath(polar(lipFn(1.14, 0.03), 36, 1, 0, 0, 1.02, 0.98)), fill: "#7a1820" }, mouth);   // the wet edge
+
+    /* wet glints along the lip, on the lit (upper-left) side */
+    var glints = el("g", { fill: "none", stroke: "#e2a6a0", "stroke-linecap": "round", opacity: "0.5" }, mouth);
+    for (var g = 0; g < 9; g++) {
+      var ga = 3.4 + g * 0.30 + (R() - 0.5) * 0.12, gr = 1.21 * rim(ga);
+      el("path", {
+        d: "M" + f(Math.cos(ga) * gr) + " " + f(Math.sin(ga) * gr * 0.98) +
+           " A" + f(gr) + " " + f(gr) + " 0 0 1 " + f(Math.cos(ga + 0.10 + R() * 0.07) * gr) + " " + f(Math.sin(ga + 0.10) * gr * 0.98),
+        "stroke-width": (0.014 + R() * 0.014).toFixed(3)
+      }, glints);
+    }
+
+    el("path", { d: closedPath(polar(rim, 36, 1, 0, 0, 1, 1)), fill: "#220608" }, mouth);                       // the inner wall
+
+    /* the throat: layers that shrink, darken and drift away; they move apart with the cursor */
+    var layers = [];
+    var shades = ["#1a0507", "#120405", "#0b0304", "#060202", "#020101"];
+    for (var L = 0; L < shades.length; L++) {
+      var sc = 0.90 - L * 0.15, off = L * 0.07;
+      var layer = el("g", {}, mouth);
+      var path = el("path", { d: closedPath(polar(rim, 36, sc, off * 0.9, -off * 1.1, 1, 1)), fill: shades[L] }, layer);
+      if (L === 1) {                                                   // a ring of small dim teeth deep in the throat
+        var back = el("g", { fill: "#6b6150" }, layer);
+        for (var b = 0; b < 15; b++) {
+          var bt = (b + R() * 0.7) / 15 * Math.PI * 2, br = rim(bt) * sc * 0.93;
+          var bl = 0.10 + R() * 0.14, bw = 0.045 + R() * 0.03;
+          var bx = off * 0.9 + Math.cos(bt) * br, by = -off * 1.1 + Math.sin(bt) * br;
+          var nx = -Math.cos(bt), ny = -Math.sin(bt), tx = -ny, ty = nx;
+          el("path", { d: "M" + f(bx + tx * bw) + " " + f(by + ty * bw) + " L" + f(bx + nx * bl) + " " + f(by + ny * bl) + " L" + f(bx - tx * bw) + " " + f(by - ty * bw) + "Z" }, back);
+        }
       }
-      for (x = IMG_W; x >= 0; x -= STRIP) {
-        p = profile(x - STRIP / 2);
-        h = gap * p * s / 2;
-        ctx.lineTo(x * s, ySeam + (p > 0 ? h + e : 0));
-      }
-      ctx.closePath();
-      ctx.fill();
+      layers.push({ g: layer, depth: 0.020 + L * 0.040 });
     }
 
-    // the lips, in strips: upper part up, lower part down (whole canvas pixels, so strips never overlap or leave gaps)
-    for (var sx = 0; sx < IMG_W; sx += STRIP) {
-      var half = gap * profile(sx + STRIP / 2) * s / 2;
-      var x0 = Math.round(sx * s), x1 = Math.round((sx + STRIP) * s);
-      ctx.drawImage(img, sx, 0, STRIP, SEAM, x0, oy - half, x1 - x0, SEAM * s);
-      ctx.drawImage(img, sx, SEAM, STRIP, IMG_H - SEAM, x0, ySeam + half, x1 - x0, (IMG_H - SEAM) * s);
-    }
-  }
-
-  /* ---- the opening, eased in time; while it speaks it moves a little, like syllables ---- */
-  var open = false, peek = false;
-  var g = 0, bump = 0, last = 0, running = false;
-
-  function aim(now) {
-    if (!(open || peek)) return 0;
-    if (reduce) return 0.7;
-    var t = now / 1000;
-    var n = Math.sin(t * 5.1) * 0.5 + Math.sin(t * 8.7 + 1.3) * 0.3 + Math.sin(t * 2.3 + 0.4) * 0.2;
-    return Math.max(0.35, Math.min(1, (peek && !open ? 0.5 : 0.6) + n * 0.15 + bump));
-  }
-
-  function next(fn) {
-    var done = false;
-    var run = function () { if (done) return; done = true; fn(); };
-    window.requestAnimationFrame(run);
-    setTimeout(run, 50);               // safety net if frames are paused
-  }
-
-  function loop() {
-    if (running) return;
-    running = true;
-    last = performance.now();
-    var step = function () {
-      var now = performance.now();
-      var dt = Math.min(64, Math.max(1, now - last));
-      last = now;
-      bump *= Math.exp(-dt / 170);
-      var to = aim(now);
-      var tau = reduce ? 1 : (to > g ? 90 : 140);
-      g += (to - g) * (1 - Math.exp(-dt / tau));
-      if (Math.abs(to - g) < 0.002 && to === 0) g = 0;
-      draw(g);
-      if (open || peek || g > 0) next(step); else running = false;
-    };
-    next(step);
-  }
-
-  /* ---- the words ---- */
-  var words = [].slice.call(list.children).map(function (li, i) {
-    var inner = document.createElement("span");
-    inner.className = "w-in";
-    while (li.firstChild) inner.appendChild(li.firstChild);
-    li.appendChild(inner);
-    inner.style.setProperty("--dx", (Math.random() * 8 - 4).toFixed(1) + "px");
-    inner.style.setProperty("--dy", (Math.random() * 8 - 4).toFixed(1) + "px");
-    inner.style.setProperty("--dr", (Math.random() * 1.6 - 0.8).toFixed(2) + "deg");
-    inner.style.setProperty("--dur", (6 + Math.random() * 4).toFixed(1) + "s");
-    inner.style.setProperty("--delay", (-Math.random() * 6).toFixed(1) + "s");
-    return {
-      el: li, link: li.querySelector("a"), keep: li.hasAttribute("data-keep"),
-      burst: li.hasAttribute("data-burst"), hold: +li.getAttribute("data-hold") || 0,
-      shown: false, rect: null, main: null, fade: null, timer: null
-    };
-  });
-  var bursts = words.filter(function (w) { return w.burst; });
-  var pool = words.filter(function (w) { return !w.burst; });
-  var timers = [];
-  function later(fn, ms) { var t = setTimeout(fn, ms); timers.push(t); return t; }
-
-  function bounds() {
-    var pr = page.getBoundingClientRect();
-    var hd = document.querySelector(".site-header");
-    var top = (hd ? hd.getBoundingClientRect().bottom : 0) - pr.top + 14;
-    return { l: 16, t: Math.max(top, 16), r: pr.width - 16, b: pr.height - 16 };
-  }
-  function mouthBox() {
-    var r = cv.getBoundingClientRect(), pr = page.getBoundingClientRect();
-    var pad = (G / 2) * k;
-    return { x: r.left - pr.left, y: r.top - pr.top + pad, w: r.width, h: IMG_H * k };
-  }
-  function overlap(a, b, pad) {
-    return a.x < b.x + b.w + pad && a.x + a.w + pad > b.x && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y;
-  }
-
-  /* find a free spot for a word around the mouth; returns its centre and angle, or null */
-  function place(w) {
-    var B = bounds(), M = mouthBox();
-    var ox = M.x + M.w / 2, oy = M.y + (SEAM / IMG_H) * M.h;
-    var el = w.el;
-    var cw = el.offsetWidth, ch = el.offsetHeight;
-    var maxRot = w.link ? 3 : (el.className.indexOf("w--xl") > -1 ? 8 : 16);
-    var best = null, bestScore = Infinity;
-    var taken = words.filter(function (o) { return o !== w && o.shown && o.rect; });
-    for (var pass = 0; pass < 2 && !best; pass++) {
-      var gap = pass ? 4 : 16;
-      for (var i = 0; i < 140; i++) {
-        var rot = (Math.random() * 2 - 1) * maxRot;
-        var a = rot * Math.PI / 180;
-        var bw = Math.abs(cw * Math.cos(a)) + Math.abs(ch * Math.sin(a));
-        var bh = Math.abs(cw * Math.sin(a)) + Math.abs(ch * Math.cos(a));
-        var cx = B.l + bw / 2 + Math.random() * Math.max(0, B.r - B.l - bw);
-        var cy = B.t + bh / 2 + Math.random() * Math.max(0, B.b - B.t - bh);
-        var box = { x: cx - bw / 2, y: cy - bh / 2, w: bw, h: bh };
-        if (overlap(box, M, 22)) continue;
-        var bad = false;
-        for (var j = 0; j < taken.length; j++) if (overlap(box, taken[j].rect, gap)) { bad = true; break; }
-        if (bad) continue;
-        var d = Math.hypot(cx - ox, (cy - oy) * 1.35);
-        var score = d + Math.random() * 120;
-        if (score < bestScore) { bestScore = score; best = { x: cx, y: cy, rot: rot, box: box, ox: ox, oy: oy }; }
-      }
-    }
-    return best;
-  }
-
-  var T = "translate(-50%,-50%)";
-  function emit(w) {
-    if (w.shown || !open) return;
-    var p = place(w);
-    if (!p) return;
-    w.shown = true;
-    w.rect = p.box;
-    clearTimeout(w.timer);
-    var el = w.el;
-    el.style.left = p.x.toFixed(1) + "px";
-    el.style.top = p.y.toFixed(1) + "px";
-    bump = Math.max(bump, 0.28);
-
-    if (reduce) {
-      el.style.transform = T + " rotate(" + p.rot.toFixed(1) + "deg)";
-      el.classList.add("is-on");
-      if (w.link) el.classList.add("is-live");
-      return;
+    /* the front teeth: few, uneven, mostly short, a couple long, one broken */
+    var teeth = el("g", {}, mouth);
+    var N = 11;
+    for (var t = 0; t < N; t++) {
+      var th = (t + (R() - 0.5) * 0.7) / N * Math.PI * 2 + 0.2;
+      var rr = rim(th) * 1.02;
+      var len = 0.20 + 0.56 * Math.pow(R(), 2.2);
+      if (t === 4) len *= 0.25;
+      var w = 0.085 + R() * 0.07, lean = (R() - 0.5) * 0.28;
+      var dx = Math.cos(th), dy = Math.sin(th), tx2 = -dy, ty2 = dx;
+      var px = dx * rr, py = dy * rr * 0.98;
+      var tipx = px - dx * len + tx2 * lean, tipy = py - dy * len + ty2 * lean;
+      var blx = px + tx2 * w, bly = py + ty2 * w, brx = px - tx2 * w, bry = py - ty2 * w;
+      var cx1 = (blx + tipx) / 2 + dx * 0.02 + tx2 * 0.03, cy1 = (bly + tipy) / 2 + dy * 0.02 + ty2 * 0.03;
+      var cx2 = (brx + tipx) / 2 - tx2 * 0.03, cy2 = (bry + tipy) / 2 - ty2 * 0.03;
+      var d = "M" + f(blx) + " " + f(bly) + " Q" + f(cx1) + " " + f(cy1) + " " + f(tipx) + " " + f(tipy) +
+              " Q" + f(cx2) + " " + f(cy2) + " " + f(brx) + " " + f(bry) + "Z";
+      el("path", { d: d, fill: "#d8ccb0" }, teeth);
+      el("path", { d: "M" + f(tipx) + " " + f(tipy) + " L" + f(brx) + " " + f(bry) + " L" + f(px) + " " + f(py) + "Z", fill: "#a89b7e" }, teeth);   // the shaded side
+      el("path", { d: "M" + f(blx) + " " + f(bly) + " L" + f(px) + " " + f(py) + " L" + f(brx) + " " + f(bry) + "Z", fill: "#3a0d10", opacity: "0.55" }, teeth);   // where it meets the gum
     }
 
-    // leaves the mouth, curves a little off the straight line, slows down as it arrives
-    var dx = p.ox - p.x, dy = p.oy - p.y;
-    var len = Math.hypot(dx, dy) || 1;
-    var side = (Math.random() < 0.5 ? -1 : 1) * len * (0.04 + Math.random() * 0.07);
-    var mx = dx * 0.4 - (dy / len) * side, my = dy * 0.4 + (dx / len) * side;
-    var dur = 1150 + Math.random() * 500 + len * 0.35;
-    var ease = "cubic-bezier(.2,.65,.3,1)";
-    w.main = el.animate([
-      { transform: T + " translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) scale(.18) rotate(" + (p.rot * 0.2).toFixed(1) + "deg)", opacity: 0, filter: "blur(6px)", offset: 0, easing: ease },
-      { transform: T + " translate(" + mx.toFixed(1) + "px," + my.toFixed(1) + "px) scale(.7) rotate(" + (p.rot * 0.6).toFixed(1) + "deg)", opacity: 0.9, filter: "blur(1px)", offset: 0.4, easing: ease },
-      { transform: T + " rotate(" + p.rot.toFixed(1) + "deg)", opacity: 1, filter: "blur(0px)", offset: 1 }
-    ], { duration: dur, fill: "forwards" });
-    if (w.link) later(function () { if (w.shown) w.el.classList.add("is-live"); }, dur * 0.7);
+    parts = { root: root, body: body, mouth: mouth, layers: layers, teeth: teeth };
+  }
 
-    // the ones that are not meant to stay fade away on their own
-    if (!w.keep) {
-      var hold = w.hold || (2000 + Math.random() * 1600);
-      w.timer = setTimeout(function () { fadeOut(w); }, dur + hold);
+  /* ================================================================ layout */
+  var W = 0, H = 0;
+  var spec = null, mouthP = null, words = [];
+  var SANS = '700 {s}px Archivo, "Arial Black", sans-serif';
+
+  function layout() {
+    W = page.clientWidth; H = page.clientHeight;
+    var portrait = W < H * 0.9;
+    if (portrait) {
+      mouthP = { x: 0.68 * W, y: 0.80 * H, R: 0.25 * W };
+      spec = {
+        mail:   { cx: 0.40 * W, cy: 0.185 * H, size: 0.165 * W, rot: -3, track: -0.04 },
+        insta:  { cx: 0.31 * W, cy: 0.285 * H, size: 0.078 * W, rot: 0, track: -0.04 },
+        phrase: { cx: 0.21 * W, cy: 0.355 * H, size: 0.070 * W, rot: 0, track: -0.01 }
+      };
+    } else {
+      var Rp = Math.min(0.215 * H, 0.17 * W);
+      mouthP = { x: 0.76 * W, y: 0.665 * H, R: Rp };
+      spec = {
+        mail:   { cx: 0.20 * W, cy: 0.27 * H, size: Math.min(0.082 * W, 0.16 * H), rot: -2, track: -0.04 },
+        insta:  { cx: 0.165 * W, cy: 0.82 * H, size: Math.min(0.040 * W, 0.078 * H), rot: 0, track: -0.04 },
+        phrase: { cx: 0.135 * W, cy: 0.405 * H, size: Math.min(0.034 * W, 0.066 * H), rot: 0, track: -0.01 }
+      };
     }
-  }
+    mouthP.unit = mouthP.R;
 
-  function fadeOut(w) {
-    if (!w.shown || !w.main) return;
-    w.fade = w.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1500 + Math.random() * 700, fill: "forwards", easing: "ease-in" });
-    w.fade.onfinish = function () { release(w); };
-  }
-
-  function release(w) {
-    clearTimeout(w.timer);
-    if (w.fade) { w.fade.cancel(); w.fade = null; }
-    if (w.main) { w.main.cancel(); w.main = null; }
-    w.el.classList.remove("is-live", "is-on");
-    w.el.style.transform = "";
-    w.shown = false;
-    w.rect = null;
-  }
-
-  /* ---- speaking: a first burst, then a word now and then ---- */
-  var talkTimer = null;
-  function talk() {
-    if (!open) return;
-    var free = pool.filter(function (w) { return !w.shown; });
-    if (free.length) emit(free[Math.floor(Math.random() * free.length)]);
-    talkTimer = later(talk, 1300 + Math.random() * 1300);
-  }
-
-  function openMouth() {
-    if (open) return;
-    open = true; peek = false;
-    page.classList.add("is-open");
-    loop();
-    if (reduce) {
-      bursts.forEach(function (w) { emit(w); });
-      return;
-    }
-    var t = 150;
-    bursts.forEach(function (w, i) {
-      later(function () { emit(w); }, t);
-      t += 230 + Math.random() * 300;
-    });
-    talkTimer = later(talk, t + 700);
-  }
-
-  function closeMouth() {
-    if (!open) return;
-    open = false;
-    page.classList.remove("is-open");
-    timers.forEach(clearTimeout); timers = [];
-    clearTimeout(talkTimer);
-    var i = 0;
     words.forEach(function (w) {
-      if (!w.shown) return;
-      var delay = i++ * 45;
-      w.el.classList.remove("is-live");
-      clearTimeout(w.timer);
-      if (reduce) { release(w); return; }
-      if (w.fade || !w.main) { release(w); return; }
-      // back into the mouth: the arrival played backwards
-      w.main.playbackRate = -1.5;
-      w.main.onfinish = null;
-      setTimeout(function () {
-        w.main.play();
-        w.main.onfinish = function () { release(w); };
-      }, delay);
+      var sp = spec[w.key], s = w.el.style;
+      s.fontSize = sp.size.toFixed(1) + "px";
+      s.letterSpacing = sp.track + "em";
+      var bw = Math.ceil(sp.size * (w.text.length * 0.78) + sp.size * 0.3), bh = Math.ceil(sp.size * 1.15);
+      s.width = bw + "px"; s.height = bh + "px"; s.lineHeight = bh + "px";
+      s.left = (sp.cx - bw / 2).toFixed(1) + "px";
+      s.top = (sp.cy - bh / 2).toFixed(1) + "px";
+      s.transform = "rotate(" + sp.rot + "deg)";
+      w.letters.forEach(function (l) { l.el.style.transform = ""; });
     });
-    loop();
+    // rest centres of every letter, with no pull applied
+    var pr = page.getBoundingClientRect();
+    words.forEach(function (w) {
+      w.letters.forEach(function (l) {
+        var r = l.el.getBoundingClientRect();
+        l.x = r.left + r.width / 2 - pr.left;
+        l.y = r.top + r.height / 2 - pr.top;
+      });
+    });
+    placeCreature(0, 0, 0, 0);
   }
 
-  function hardClose() {
-    open = false; peek = false;
-    page.classList.remove("is-open");
-    timers.forEach(clearTimeout); timers = [];
-    words.forEach(release);
-    g = 0;
-    draw(0);
+  function placeCreature(tx, ty, rot, prox) {
+    var u = mouthP.unit;
+    parts.root.setAttribute("transform", "translate(" + (mouthP.x + tx).toFixed(1) + " " + (mouthP.y + ty).toFixed(1) + ") rotate(" + rot.toFixed(2) + ") scale(" + u.toFixed(2) + ") rotate(-14)");
   }
 
-  /* ---- who is "inside": the mouth, or a word that is a link, or keyboard focus ---- */
-  var overMouth = false, overWord = false, focusIn = false, closeTimer = null;
-  function settle() {
-    clearTimeout(closeTimer);
-    if (overMouth || overWord || focusIn) return;
-    if (touchOnly) return;
-    closeTimer = setTimeout(closeMouth, 1100);   // time to move from the mouth to a word
+  /* ================================================================ words */
+  function buildWords() {
+    words = wordEls.map(function (e) {
+      var text = e.textContent.trim();
+      var sr = document.createElement("span");
+      sr.className = "visually-hidden";
+      sr.textContent = text;
+      var box = document.createElement("span");
+      box.className = "ct-letters";
+      box.setAttribute("aria-hidden", "true");
+      var letters = [];
+      for (var i = 0; i < text.length; i++) {
+        var ch = text.charAt(i);
+        var l = document.createElement("span");
+        l.className = "ct-l";
+        l.textContent = ch === " " ? " " : ch;
+        box.appendChild(l);
+        letters.push({ el: l, x: 0, y: 0 });
+      }
+      e.textContent = "";
+      e.appendChild(sr);
+      e.appendChild(box);
+      return { el: e, key: e.getAttribute("data-kind"), text: text, letters: letters, link: e.classList.contains("ct-link"), calm: 0, calmT: 0 };
+    });
   }
 
-  mouth.addEventListener("pointerenter", function (e) {
+  /* ================================================================ state */
+  var T = { cx: 0, cy: 0, in: false, touching: false, demo: 0, focus: false };
+  var S = { cx: 0, cy: 0, prox: 0, pull: 0, force: 0, offx: 0, offy: 0 };
+  var lastMove = 0, last = 0, raf = 0, running = false;
+
+  function easeTo(cur, tgt, dt, tau) { return cur + (tgt - cur) * (1 - Math.exp(-dt / tau)); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function apply() {
+    var M = mouthP, u = M.unit, portrait = W < H * 0.9;
+    var ox = clamp((S.cx - M.x) / (3 * M.R), -1, 1) * S.force, oy = clamp((S.cy - M.y) / (3 * M.R), -1, 1) * S.force;
+    S.offx = ox; S.offy = oy;
+
+    /* the creature perceives the cursor: the mass leans a little, the mouth swells, the throat shifts in depth */
+    placeCreature(ox * 10, oy * 8, ox * 1.4, S.prox);
+    parts.mouth.setAttribute("transform", "scale(" + (1 + 0.075 * S.prox).toFixed(4) + ")");
+    parts.layers.forEach(function (L) {
+      L.g.setAttribute("transform", "translate(" + (-ox * L.depth * 3.2).toFixed(4) + " " + (-oy * L.depth * 3.2).toFixed(4) + ")");
+    });
+    parts.teeth.setAttribute("transform", "translate(" + (-ox * 0.025).toFixed(4) + " " + (-oy * 0.025).toFixed(4) + ") scale(" + (1 + 0.045 * S.prox).toFixed(4) + ")");
+
+    /* each letter is drawn in towards the mouth: stretched along the pull, curled, smaller as it sinks */
+    var Rg = M.R * 3.4;
+    words.forEach(function (w) {
+      var calm = w.calm;
+      w.letters.forEach(function (l) {
+        var dx = M.x - l.x, dy = M.y - l.y, r = Math.sqrt(dx * dx + dy * dy) || 1;
+        var fall = Math.exp(-(r * r) / (Rg * Rg));
+        var fp = S.pull * fall * (1 - calm);
+        var cdx = l.x - S.cx, cdy = l.y - S.cy, cr2 = cdx * cdx + cdy * cdy;
+        var dent = S.force * Math.exp(-cr2 / (M.R * M.R * 0.9)) * (1 - calm);
+        if (fp < 0.002 && dent < 0.002) { l.el.style.transform = ""; return; }
+        var ang = Math.atan2(dy, dx);
+        var c = Math.cos(ang), s = Math.sin(ang);
+        var sx = 1 + fp * 1.15, sy = 1 - fp * 0.42, k = 1 - dent * 0.22;
+        var a = (sx * c * c + sy * s * s) * k, b = (sx - sy) * s * c * k, d = (sx * s * s + sy * c * c) * k;
+        var curl = fp * 0.55, cc = Math.cos(curl), cs = Math.sin(curl);
+        var m11 = cc * a - cs * b, m12 = cs * a + cc * b, m21 = cc * b - cs * d, m22 = cs * b + cc * d;
+        var tx = dx * fp * 0.62, ty = dy * fp * 0.62;
+        l.el.style.transform = "matrix(" + m11.toFixed(4) + "," + m12.toFixed(4) + "," + m21.toFixed(4) + "," + m22.toFixed(4) + "," + tx.toFixed(2) + "," + ty.toFixed(2) + ")";
+      });
+    });
+  }
+
+  function frame(now) {
+    raf = 0;
+    if (!running) return;
+    var dt = Math.min(64, Math.max(1, now - (last || now - 16)));
+    last = now;
+    var M = mouthP;
+
+    if (T.demo) {                                    // touch: the presence drifts to the mouth once
+      var k = Math.min(1, (now - T.demo) / 3000);
+      if (k >= 1) { T.demo = 0; T.in = false; }
+      else {
+        var e = Math.sin(k * Math.PI);
+        T.cx = W * 0.12 * (1 - e) + (M.x - M.R * 1.4) * e;
+        T.cy = H * 0.30 * (1 - e) + (M.y - M.R * 0.4) * e;
+        T.in = true;
+      }
+    }
+    S.cx = easeTo(S.cx, T.cx, dt, 150);
+    S.cy = easeTo(S.cy, T.cy, dt, 150);
+    var active = (T.in || T.touching) ? 1 : 0;
+    var dist = Math.hypot(S.cx - M.x, S.cy - M.y);
+    var prox = Math.exp(-Math.pow(dist / (3.2 * M.R), 2)) * active;
+    var pullMax = W < H * 0.9 ? 0.42 : 0.80;
+    S.prox = easeTo(S.prox, prox, dt, 420);
+    S.pull = easeTo(S.pull, pullMax * prox, dt, 380);
+    S.force = easeTo(S.force, active, dt, active ? 220 : 520);
+    var anyCalm = false;
+    words.forEach(function (w) {
+      w.calm = easeTo(w.calm, w.calmT, dt, 200);
+      if (Math.abs(w.calm - w.calmT) > 0.003) anyCalm = true;
+    });
+
+    apply();
+
+    var settled = !active && S.pull < 0.002 && S.force < 0.002 && S.prox < 0.002 && !T.demo && !anyCalm;
+    if (settled) { S.pull = S.force = S.prox = 0; apply(); running = false; return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (reduce || running) return;
+    running = true; last = 0;
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  /* ================================================================ input */
+  function setCursor(e) {
+    var r = page.getBoundingClientRect();
+    T.cx = e.clientX - r.left; T.cy = e.clientY - r.top;
+    lastMove = performance.now();
+  }
+  window.addEventListener("pointermove", function (e) {
     if (e.pointerType === "touch") return;
-    overMouth = true; clearTimeout(closeTimer); openMouth();
-  });
-  mouth.addEventListener("pointerleave", function (e) {
-    if (e.pointerType === "touch") return;
-    overMouth = false; settle();
-  });
-  words.forEach(function (w) {
-    if (!w.link) return;
-    w.el.addEventListener("pointerenter", function () { overWord = true; clearTimeout(closeTimer); });
-    w.el.addEventListener("pointerleave", function () { overWord = false; settle(); });
-    w.link.addEventListener("focus", function () { focusIn = true; clearTimeout(closeTimer); openMouth(); });
-    w.link.addEventListener("blur", function () { focusIn = false; settle(); });
-  });
+    T.demo = 0; T.in = true; setCursor(e); start();
+  }, { passive: true });
+  document.documentElement.addEventListener("pointerleave", function (e) { if (e.pointerType !== "touch") { T.in = false; start(); } });
+  window.addEventListener("blur", function () { T.in = false; start(); });
 
-  /* touch: tap the mouth to open it, tap it again (or anywhere else) to close it */
-  mouth.addEventListener("pointerdown", function (e) {
+  page.addEventListener("pointerdown", function (e) {
     if (e.pointerType !== "touch") return;
-    e.preventDefault();
-    if (open) closeMouth(); else openMouth();
-  });
-  document.addEventListener("pointerdown", function (e) {
-    if (e.pointerType !== "touch" || !open) return;
-    if (mouth.contains(e.target) || list.contains(e.target)) return;
-    closeMouth();
-  });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && open) { focusIn = false; overMouth = false; overWord = false; closeMouth(); } });
+    if (e.target.closest && e.target.closest(".ct-link")) return;      // let the tap reach the link
+    T.demo = 0; T.touching = true; T.in = true; setCursor(e); start();
+  }, { passive: true });
+  page.addEventListener("pointermove", function (e) {
+    if (e.pointerType !== "touch" || !T.touching) return;
+    setCursor(e);
+  }, { passive: true });
+  function releaseTouch(e) {
+    if (e.pointerType !== "touch") return;
+    setTimeout(function () { T.touching = false; T.in = false; start(); }, 1600);
+  }
+  page.addEventListener("pointerup", releaseTouch);
+  page.addEventListener("pointercancel", releaseTouch);
 
-  /* ---- start ---- */
+  function hot(w, on) {
+    w.calmT = on ? 1 : 0;
+    w.el.classList.toggle("is-hot", on);
+    if (reduce) { w.calm = w.calmT; apply(); } else start();
+  }
+
+  /* ================================================================ boot */
+  function boot() {
+    buildCreature();
+    buildWords();
+    layout();
+    words.forEach(function (w) {
+      if (!w.link) return;
+      w.el.addEventListener("pointerenter", function () { hot(w, true); });
+      w.el.addEventListener("pointerleave", function () { hot(w, false); });
+      w.el.addEventListener("focus", function () { hot(w, true); });
+      w.el.addEventListener("blur", function () { hot(w, false); });
+    });
+    S.cx = T.cx = mouthP.x - mouthP.R * 3;
+    S.cy = T.cy = mouthP.y - mouthP.R * 1.5;
+    apply();
+    if (!reduce && touchOnly) setTimeout(function () { if (!T.touching) { T.demo = performance.now(); start(); } }, 1000);
+  }
+
   var resizeT = null;
   window.addEventListener("resize", function () {
     clearTimeout(resizeT);
-    resizeT = setTimeout(function () { hardClose(); size(); draw(0); }, 120);
+    resizeT = setTimeout(function () { layout(); apply(); }, 140);
   }, { passive: true });
 
-  img.onload = function () {
-    ready = true;
-    size();
-    draw(0);
-    // on touch screens the lips part once, so the gesture can be discovered
-    if (touchOnly && !reduce) {
-      setTimeout(function () {
-        if (open) return;
-        peek = true; loop();
-        setTimeout(function () { peek = false; }, 1400);
-      }, 1000);
-    }
-  };
-  img.src = "assets/contact/mouth.webp?v=2";
+  var fontsReady = (document.fonts && document.fonts.load)
+    ? Promise.all([document.fonts.load("700 100px Archivo"), document.fonts.load('italic 400 40px "EB Garamond"')]).catch(function () {})
+    : Promise.resolve();
+  var guard = new Promise(function (res) { setTimeout(res, 2500); });
+  Promise.race([fontsReady, guard]).then(boot);
 })();

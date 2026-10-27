@@ -1,120 +1,69 @@
 /* =========================================================
-   Contact — "The mouth speaks".
-   A large mouth (the portrait's own, cropped) sits in a lot of empty space.
-   js/contact.js parts its lips and lets words out. The words are real list
-   items (.w); the mail link is a real mailto: link.
+   Contact — a flat creature breaks through the page.
+   The creature is an SVG drawing (js/contact.js builds it) placed above the words, so what the
+   cursor pulls towards its mouth slips behind it. The words are real text, split into letters
+   so each one can be drawn in separately; the links are ordinary links.
    ========================================================= */
 
-:root {
-  --accent: #d9475a;     /* the red of the logo painted on the cover */
-}
-
-.mouth-page {
+.ct-page {
   position: relative;
-  min-height: 100svh;
+  z-index: 0;
+  height: 100svh;
+  min-height: 420px;
   overflow: hidden;
-}
-
-/* ---------- the mouth ---------- */
-
-.mouth {
-  position: absolute;
-  left: 50%;
-  top: 56%;
-  width: min(66vw, 840px);
-  transform: translate(-50%, -50%);
-  cursor: default;
   touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-.mouth::before {            /* a little more room to enter the mouth with the cursor */
-  content: "";
-  position: absolute;
-  inset: -22% -8%;
-}
-.mouth-still,
-.mouth-canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-.js .mouth-still { display: none; }
-.mouth-canvas { display: none; }
-.js .mouth-canvas { display: block; }
-
-/* ---------- the words ---------- */
-
-.words {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
 }
 
-.w {
+.ct-words { position: absolute; inset: 0; pointer-events: none; }
+
+.ct-word {
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 1;
   margin: 0;
-  opacity: 0;
+  display: block;
   white-space: nowrap;
-  color: var(--ink);
-  transform: translate(-50%, -50%);
-  will-change: transform, opacity;
-}
-.w-in {
-  display: block;
-  animation: w-drift var(--dur, 7s) ease-in-out var(--delay, 0s) infinite alternate;
-}
-@keyframes w-drift {
-  from { transform: translate(0, 0) rotate(0deg); }
-  to   { transform: translate(var(--dx, 3px), var(--dy, -4px)) rotate(var(--dr, 0.6deg)); }
-}
-
-.w--xl { font-family: var(--font-serif); font-style: italic; font-size: clamp(28px, 5.4vw, 76px); line-height: 1; letter-spacing: -0.025em; }
-.w--l  { font-family: var(--font-serif); font-style: italic; font-size: clamp(30px, 4vw, 56px); line-height: 1; letter-spacing: -0.02em; }
-.w--m  { font-family: var(--font-serif); font-size: clamp(20px, 2.5vw, 32px); line-height: 1.1; letter-spacing: -0.01em; }
-.w--s  { font-family: var(--font-sans); font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--graphite); }
-.w--blk { font-family: "Archivo", var(--font-sans); font-weight: 700; font-stretch: 125%; text-transform: uppercase; font-size: clamp(26px, 3.6vw, 52px); line-height: 1; letter-spacing: -0.04em; }
-.w--red { color: var(--accent); }
-.w--wrap { white-space: normal; max-width: min(300px, 70vw); text-align: center; line-height: 1.5; }
-
-.w--mail { font-family: var(--font-sans); font-size: clamp(15px, 1.5vw, 19px); font-weight: 500; letter-spacing: 0.01em; }
-.w--mail a {
-  display: block;
-  padding: 10px 14px;
-  color: var(--ink);
+  line-height: 1;
+  text-align: center;
   text-decoration: none;
-  border-bottom: 1px solid transparent;
-  background-clip: padding-box;
-  pointer-events: none;                /* only once the word has come out */
+  color: var(--ink);
+  font-family: "Archivo", var(--font-sans);
+  font-weight: 700;
+  text-transform: uppercase;
 }
-.w--mail a > span { border-bottom: 1px solid var(--ink); padding-bottom: 3px; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
-.w--mail.is-live a { pointer-events: auto; }
-.w--mail a:hover > span,
-.w--mail a:focus-visible > span { color: var(--accent); border-color: var(--accent); }
-.w--mail a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ct-phrase { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--graphite); }
+.ct-letters { display: block; }
+.ct-l { display: inline-block; will-change: transform; transform-origin: 50% 55%; }
 
-/* reduced motion: the words simply appear, without travelling */
-.w.is-on { opacity: 1; transition: opacity 240ms var(--ease); }
-.w.is-on .w-in { animation: none; }
+.ct-link { pointer-events: auto; cursor: pointer; }
+.ct-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+.ct-link.is-hot { z-index: 3; }                     /* a hovered link comes in front of the creature */
 
-/* ---------- without JavaScript: the mouth and the words, stacked ---------- */
+/* ---------- the creature ---------- */
 
-html:not(.js) .mouth { position: relative; left: auto; top: auto; margin: 140px auto 40px; transform: none; }
-html:not(.js) .words { position: static; padding: 0 var(--margin-outer) 80px; text-align: center; }
-html:not(.js) .w { position: static; display: block; opacity: 1; margin: 12px 0; transform: none; }
-html:not(.js) .w--mail a { pointer-events: auto; display: inline-block; }
-html:not(.js) .w--wrap { margin-left: auto; margin-right: auto; }
-
-@media (max-width: 720px) {
-  .mouth { width: 88vw; top: 54%; }
+.ct-creature {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
 }
-
+.ct-breathe { animation: ct-breathe 7s ease-in-out infinite; transform-box: view-box; }
+@keyframes ct-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.012); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .w-in { animation: none; }
+  .ct-breathe { animation: none; }
 }
+
+/* ---------- without JavaScript: the words, stacked ---------- */
+
+html:not(.js) .ct-page { height: auto; min-height: 100svh; overflow: visible; padding: 130px var(--margin-outer) 80px; box-sizing: border-box; }
+html:not(.js) .ct-words { position: static; display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+html:not(.js) .ct-word { position: static; font-size: clamp(34px, 8vw, 84px); letter-spacing: -0.03em; text-align: left; }
+html:not(.js) .ct-phrase { font-size: clamp(22px, 3vw, 34px); text-transform: none; letter-spacing: -0.01em; }
+html:not(.js) .ct-link:hover { color: #d9475a; }
